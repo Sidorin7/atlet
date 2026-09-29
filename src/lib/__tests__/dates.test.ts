@@ -5,6 +5,8 @@ import {
   monthGrid,
   startOfMonth,
   startOfWeek,
+  dayMonthLabel,
+  shortMonth,
   todayISO,
   weekDates,
   weekdayIndex,
@@ -83,5 +85,12 @@ describe('todayISO', () => {
   it('uses the local calendar date, not UTC', () => {
     expect(todayISO(new Date(2026, 8, 29, 23, 59))).toBe('2026-09-29');
     expect(todayISO(new Date(2026, 8, 30, 0, 1))).toBe('2026-09-30');
+  });
+});
+
+describe('labels', () => {
+  it('formats short month and day + month in the given locale', () => {
+    expect(shortMonth('2026-09-29', 'en')).toBe('Sep');
+    expect(dayMonthLabel('2026-09-29', 'en')).toBe('September 29');
   });
 });

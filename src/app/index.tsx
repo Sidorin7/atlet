@@ -92,7 +92,12 @@ export default function DayScreen() {
           )}
         </View>
         <View style={styles.headerButtons}>
-          <Pressable hitSlop={8} accessibilityRole="button">
+          <Pressable
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel={t('progress.title')}
+            onPress={() => router.push('/progress')}
+          >
             <HeartIcon color={colors.text} />
           </Pressable>
           <Link href="/settings" asChild>

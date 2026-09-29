@@ -5,7 +5,7 @@ import type { Reader } from '@/db/types';
 import { diffDays, type ISODate } from '@/lib/dates';
 
 // A set counts as filled once it has reps, a duration or a distance (weight alone is not a result).
-const filled = or(isNotNull(sets.reps), isNotNull(sets.durationSec), isNotNull(sets.distanceM))!;
+export const filled = or(isNotNull(sets.reps), isNotNull(sets.durationSec), isNotNull(sets.distanceM))!;
 
 export const workoutOnDate = (db: Reader, date: ISODate) =>
   db.select().from(workouts).where(eq(workouts.date, date)).orderBy(asc(workouts.id)).limit(1);

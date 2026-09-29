@@ -67,3 +67,8 @@ export const monthTitle = (iso: ISODate, locale: string, withYear: boolean): str
 };
 
 export const dayNumber = (iso: ISODate): number => Number(iso.slice(8, 10));
+
+export const shortMonth = (iso: ISODate, locale: string): string => fmt(iso, locale, { month: 'short' });
+
+export const dayMonthLabel = (iso: ISODate, locale: string): string =>
+  fmt(iso, locale, { day: 'numeric', month: 'long' });
