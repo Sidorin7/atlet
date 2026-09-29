@@ -75,6 +75,17 @@ export const en: Translation = {
     kilometres: 'Distance, km',
     best: 'Best result',
   },
+  backup: {
+    confirmTitle: 'Replace all data?',
+    confirmMessage: 'The file contains: workouts — {{workouts}}, exercises — {{exercises}}, programs — {{programs}}, sets — {{sets}}.\n\nThe data on this phone will be replaced.',
+    replace: 'Replace',
+    importedTitle: 'Data restored',
+    invalidTitle: 'Unsuitable file',
+    invalidMessage: 'This is not a GymApp backup or the file is damaged. Your current data is unchanged.',
+    errorTitle: 'Something went wrong',
+    errorMessage: 'Something went wrong. Your current data is unchanged.',
+    exportFailed: 'Could not share the file.',
+  },
   library: {
     title: 'Library',
     search: 'Search',
@@ -151,5 +162,9 @@ export const en: Translation = {
     dark: 'Dark',
     russian: 'Русский',
     english: 'English',
+    data: 'Data',
+    export: 'Export data',
+    import: 'Import data',
+    dataHint: 'Save a copy to Files or iCloud: deleting the app erases the data on the phone.',
   },
 };

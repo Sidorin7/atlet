@@ -1,14 +1,9 @@
 import { db } from '@/db/client';
-import { settings } from '@/db/schema';
 
-import type { LanguagePref, ThemePref } from './resolve';
+import { setSetting as setSettingIn, type SettingKey, type SettingValue } from './store-core';
 
-export type SettingKey = 'theme' | 'language';
-export type SettingValue<K extends SettingKey> = K extends 'theme' ? ThemePref : LanguagePref;
+export type { SettingKey, SettingValue };
 
-export async function setSetting<K extends SettingKey>(key: K, value: SettingValue<K>) {
-  await db
-    .insert(settings)
-    .values({ key, value })
-    .onConflictDoUpdate({ target: settings.key, set: { value } });
+export function setSetting<K extends SettingKey>(key: K, value: SettingValue<K>) {
+  setSettingIn(db, key, value);
 }
