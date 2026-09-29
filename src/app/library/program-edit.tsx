@@ -1,4 +1,6 @@
 import { router, Stack, useLocalSearchParams } from 'expo-router';
+
+import { closeScreen } from '@/library/nav';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Alert, Pressable, StyleSheet, View } from 'react-native';
@@ -50,7 +52,7 @@ export default function ProgramEditScreen() {
   const save = () => {
     if (programId) updateProgram(db, programId, draft);
     else createProgram(db, draft);
-    router.back();
+    closeScreen();
   };
 
   const remove = () => {

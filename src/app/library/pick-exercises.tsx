@@ -1,4 +1,5 @@
-import { router } from 'expo-router';
+
+import { closeScreen } from '@/library/nav';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ScrollView, StyleSheet, View } from 'react-native';
@@ -54,7 +55,7 @@ export default function PickExercisesScreen() {
         {shown.length === 0 && <EmptyText>{t('library.noResults')}</EmptyText>}
       </ScrollView>
       <View style={styles.footer}>
-        <Button title={t('common.save')} onPress={() => router.back()} />
+        <Button title={t('common.save')} onPress={() => closeScreen()} />
       </View>
     </View>
   );

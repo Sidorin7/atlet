@@ -1,4 +1,6 @@
 import { router, Stack, useLocalSearchParams } from 'expo-router';
+
+import { closeScreen } from '@/library/nav';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
@@ -24,7 +26,7 @@ export default function GroupEditScreen() {
   const save = () => {
     if (groupId) updateGroup(db, groupId, { name, icon });
     else createGroup(db, { name, icon });
-    router.back();
+    closeScreen();
   };
 
   const remove = () => {

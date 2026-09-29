@@ -1,4 +1,6 @@
 import { router, Stack, useLocalSearchParams } from 'expo-router';
+
+import { closeScreen } from '@/library/nav';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -34,7 +36,7 @@ export default function ExerciseEditScreen() {
     if (groupId === null) return;
     if (exerciseId) updateExercise(db, exerciseId, { name, groupId, type });
     else createExercise(db, { name, groupId, type });
-    router.back();
+    closeScreen();
   };
 
   const remove = () => {
@@ -47,7 +49,7 @@ export default function ExerciseEditScreen() {
         style: 'destructive',
         onPress: () => {
           removeExercise(db, exerciseId);
-          router.back();
+          closeScreen();
         },
       },
     ]);
