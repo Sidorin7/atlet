@@ -8,10 +8,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { MonthGrid, WeekStrip } from '@/components/calendar';
 import { EmptyIllustration } from '@/components/empty-illustration';
 import { ChevronRightIcon, GearIcon, HeartIcon, MoreIcon, PlusIcon } from '@/components/icons';
+import { Button } from '@/components/ui';
 import { WorkoutView } from '@/components/workout-view';
 import { db } from '@/db/client';
 import { useLive } from '@/db/use-live';
-import { addMonths, diffDays, monthTitle, startOfMonth, type ISODate } from '@/lib/dates';
+import { addMonths, diffDays, isSameMonth, monthTitle, startOfMonth, type ISODate } from '@/lib/dates';
 import { useToday } from '@/lib/use-today';
 import { useSettings } from '@/settings/provider';
 import { radius, spacing, typography } from '@/theme/tokens';
@@ -59,6 +60,12 @@ export default function DayScreen() {
       else if (e.translationY < -16) toggleMonth(false);
     });
 
+  // In month view "today" also means the current month is on screen.
+  const onToday = selected === today && (!monthOpen || isSameMonth(month, today));
+
+  const openLibrary = (tab?: 'programs') =>
+    router.push({ pathname: '/library', params: { date: selected, ...(tab && { tab }) } });
+
   const title = monthOpen
     ? monthTitle(month, language, month.slice(0, 4) !== today.slice(0, 4))
     : selected === today
@@ -84,7 +91,13 @@ export default function DayScreen() {
               <ChevronRightIcon color={colors.text} size={22} />
             </Pressable>
           )}
-          <Text style={[typography.largeTitle, { color: colors.text }]}>{title}</Text>
+          <Pressable
+            onPress={() => toggleMonth(!monthOpen)}
+            accessibilityRole="button"
+            accessibilityState={{ expanded: monthOpen }}
+          >
+            <Text style={[typography.largeTitle, { color: colors.text }]}>{title}</Text>
+          </Pressable>
           {monthOpen && (
             <Pressable hitSlop={10} onPress={() => setMonth(addMonths(month, 1))}>
               <ChevronRightIcon color={colors.text} size={22} />
@@ -92,6 +105,16 @@ export default function DayScreen() {
           )}
         </View>
         <View style={styles.headerButtons}>
+          {!onToday && (
+            <Pressable
+              onPress={() => select(today)}
+              hitSlop={8}
+              accessibilityRole="button"
+              style={[styles.todayButton, { backgroundColor: colors.surface }]}
+            >
+              <Text style={[typography.caption, { color: colors.text }]}>{t('common.today')}</Text>
+            </Pressable>
+          )}
           <Pressable
             hitSlop={8}
             accessibilityRole="button"
@@ -150,15 +173,16 @@ export default function DayScreen() {
           <View style={styles.empty}>
             <EmptyIllustration disc={colors.surface} ink={colors.text} spark={colors.placeholder} />
             <Text style={[typography.title, { color: colors.text }]}>{emptyText}</Text>
-            <Text style={[typography.body, styles.centerText, { color: colors.textSecondary }]}>
-              {t('day.hint')}
-            </Text>
+            <View style={styles.emptyActions}>
+              <Button title={t('day.pickProgram')} onPress={() => openLibrary('programs')} />
+              <Button title={t('day.pickExercises')} variant="secondary" onPress={() => openLibrary()} />
+            </View>
           </View>
         )}
       </ScrollView>
 
       <Pressable
-        onPress={() => router.push({ pathname: '/library', params: { date: selected } })}
+        onPress={() => openLibrary()}
         accessibilityRole="button"
         accessibilityLabel={t('library.title')}
         style={[styles.fab, { backgroundColor: colors.accent }]}
@@ -200,12 +224,18 @@ const styles = StyleSheet.create({
   },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   flip: { transform: [{ scaleX: -1 }] },
-  headerButtons: { flexDirection: 'row', gap: spacing.md },
+  headerButtons: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   handleArea: { alignItems: 'center', paddingVertical: spacing.sm },
   handle: { width: 40, height: 5, borderRadius: radius.full },
   content: { padding: spacing.md, gap: spacing.sm, paddingBottom: 120, flexGrow: 1 },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.sm, paddingTop: spacing.lg },
-  centerText: { textAlign: 'center' },
+  emptyActions: { alignSelf: 'stretch', gap: spacing.sm, marginTop: spacing.md },
+  todayButton: {
+    height: 32,
+    paddingHorizontal: 12,
+    borderRadius: radius.full,
+    justifyContent: 'center',
+  },
   more: {
     position: 'absolute',
     bottom: spacing.xl + 8,

@@ -98,7 +98,7 @@ function AppStack() {
           name="settings"
           options={{
             presentation: 'formSheet',
-            sheetAllowedDetents: [0.6, 1],
+            sheetAllowedDetents: [0.8, 1],
             sheetGrabberVisible: true,
             sheetCornerRadius: 24,
           }}

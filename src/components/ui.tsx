@@ -5,7 +5,7 @@ import { Pressable, StyleSheet, Text, TextInput, View, type TextInputProps } fro
 import { useColors } from '@/settings/provider';
 import { programGradients, radius, spacing, typography, type ProgramColor } from '@/theme/tokens';
 
-import { CheckIcon, ChevronRightIcon, CloseIcon } from './icons';
+import { CheckIcon, ChevronRightIcon, CloseIcon, PlusIcon } from './icons';
 
 export function TextField(props: TextInputProps) {
   const colors = useColors();
@@ -149,9 +149,10 @@ export function RadioRow({ title, selected, onPress }: { title: string; selected
   );
 }
 
-export function AddedBadge({ count }: { count?: number }) {
+/** Right side of a library row that adds to the day: "+" until tapped, then a check (×n if repeated). */
+export function AddMark({ count }: { count?: number }) {
   const colors = useColors();
-  if (!count) return null;
+  if (!count) return <PlusIcon color={colors.textSecondary} />;
   return (
     <View style={styles.badge}>
       {count > 1 && <Text style={[typography.caption, { color: colors.textSecondary }]}>×{count}</Text>}

@@ -72,3 +72,11 @@ export const shortMonth = (iso: ISODate, locale: string): string => fmt(iso, loc
 
 export const dayMonthLabel = (iso: ISODate, locale: string): string =>
   fmt(iso, locale, { day: 'numeric', month: 'long' });
+
+/** e.g. '20 сент.'; the year is added when it differs from `today`'s. */
+export const shortDayLabel = (iso: ISODate, locale: string, today: ISODate): string =>
+  fmt(iso, locale, {
+    day: 'numeric',
+    month: 'short',
+    ...(iso.slice(0, 4) !== today.slice(0, 4) && { year: 'numeric' }),
+  });

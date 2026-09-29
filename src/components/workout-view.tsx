@@ -4,17 +4,20 @@ import { useTranslation } from 'react-i18next';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { GroupIcon } from '@/components/group-icons';
-import { ChevronRightIcon, PlusIcon } from '@/components/icons';
+import { ChevronRightIcon, PlusIcon, TrashIcon } from '@/components/icons';
 import { GradientCard } from '@/components/ui';
 import { db } from '@/db/client';
 import type { workouts } from '@/db/schema';
 import { useLive } from '@/db/use-live';
-import { useColors } from '@/settings/provider';
+import { shortDayLabel } from '@/lib/dates';
+import { useColors, useSettings } from '@/settings/provider';
 import { radius, spacing, typography } from '@/theme/tokens';
-import { previousSets, setsOf, workoutExercisesOf, workoutSetSummary } from '@/workouts/queries';
+import { ghostPatch, suggestions } from '@/workouts/fields';
+import { previousSession, setsOf, workoutExercisesOf, workoutSetSummary } from '@/workouts/queries';
 import { addSet, removeWorkoutExercise } from '@/workouts/repo';
 
-import { SetRow } from './set-row';
+import { NumberPadDone } from './number-pill';
+import { NUMBER_WIDTH, SetRow, useSetFields } from './set-row';
 
 type Workout = typeof workouts.$inferSelect;
 type Item = ReturnType<typeof workoutExercisesOf>['_']['result'][number];
@@ -64,6 +67,7 @@ export function WorkoutView({ workout }: { workout: Workout }) {
           {t('day.noExercises')}
         </Text>
       )}
+      <NumberPadDone />
     </View>
   );
 }
@@ -124,13 +128,37 @@ function ExerciseItem({
 
 function Sets({ item, date, onRemove }: { item: Item; date: string; onRemove: () => void }) {
   const { t } = useTranslation();
-  const colors = useColors();
+  const { colors, language } = useSettings();
   const rows = useLive(() => setsOf(db, item.id), [item.id]);
-  const ghosts = useMemo(() => previousSets(db, item.exerciseId, date), [item.exerciseId, date]);
+  const last = useMemo(() => previousSession(db, item.exerciseId, date), [item.exerciseId, date]);
   const [focusId, setFocusId] = useState<number | null>(null);
+  const fields = useSetFields(item.type);
+  const ghosts = suggestions(fields, rows, last.sets);
+  const canRepeat = rows.some((s, i) => ghostPatch(fields, s, ghosts[i]) !== null);
+
+  const notes = [
+    last.date && t('workout.lastTime', { date: shortDayLabel(last.date, language, date) }),
+    canRepeat && t('workout.repeatHint'),
+  ].filter(Boolean);
+  const noteText = notes.join(' · ');
 
   return (
     <View style={styles.sets}>
+      {notes.length > 0 && (
+        <Text style={[typography.caption, styles.notes, { color: colors.textSecondary }]}>
+          {noteText.charAt(0).toUpperCase() + noteText.slice(1)}
+        </Text>
+      )}
+      {rows.length > 0 && (
+        <View style={styles.columns} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+          <View style={styles.numberColumn} />
+          {fields.map((f) => (
+            <Text key={f.unit} style={[typography.caption, styles.column, { color: colors.textSecondary }]}>
+              {f.unit}
+            </Text>
+          ))}
+        </View>
+      )}
       {rows.map((s, i) => (
         <SetRow
           key={s.id}
@@ -141,20 +169,28 @@ function Sets({ item, date, onRemove }: { item: Item; date: string; onRemove: ()
           autoFocus={s.id === focusId}
         />
       ))}
-      <Pressable
-        onPress={() => {
-          Haptics.selectionAsync();
-          setFocusId(addSet(db, item.id));
-        }}
-        accessibilityRole="button"
-        style={[styles.addSet, { borderColor: colors.placeholder }]}
-      >
-        <PlusIcon size={18} color={colors.textSecondary} />
-        <Text style={[typography.body, { color: colors.textSecondary }]}>{t('workout.addSet')}</Text>
-      </Pressable>
-      <Pressable onPress={onRemove} accessibilityRole="button" style={styles.remove}>
-        <Text style={[typography.caption, { color: colors.danger }]}>{t('workout.removeExercise')}</Text>
-      </Pressable>
+      <View style={styles.actions}>
+        <Pressable
+          onPress={() => {
+            Haptics.selectionAsync();
+            setFocusId(addSet(db, item.id));
+          }}
+          accessibilityRole="button"
+          style={[styles.addSet, { borderColor: colors.placeholder }]}
+        >
+          <PlusIcon size={16} color={colors.textSecondary} />
+          <Text style={[typography.caption, { color: colors.textSecondary }]}>{t('workout.addSet')}</Text>
+        </Pressable>
+        <Pressable
+          onPress={onRemove}
+          hitSlop={4}
+          accessibilityRole="button"
+          accessibilityLabel={t('workout.removeExercise')}
+          style={styles.remove}
+        >
+          <TrashIcon size={18} color={colors.danger} />
+        </Pressable>
+      </View>
     </View>
   );
 }
@@ -173,17 +209,22 @@ const styles = StyleSheet.create({
     minHeight: 60,
   },
   headerText: { flex: 1, gap: 2 },
-  sets: { paddingBottom: spacing.sm },
+  sets: { paddingBottom: spacing.xs },
+  notes: { paddingHorizontal: spacing.xs, paddingBottom: spacing.xs },
+  columns: { flexDirection: 'row', gap: 6 },
+  numberColumn: { width: NUMBER_WIDTH },
+  column: { flex: 1, textAlign: 'center' },
+  actions: { flexDirection: 'row', gap: 6, marginTop: 3 },
   addSet: {
-    marginTop: 8,
-    height: 48,
-    borderRadius: radius.md,
+    flex: 1,
+    height: 36,
+    borderRadius: radius.sm,
     borderWidth: 1.5,
     borderStyle: 'dashed',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
+    gap: 6,
   },
-  remove: { alignItems: 'center', paddingTop: 14, paddingBottom: 6 },
+  remove: { width: 44, height: 36, alignItems: 'center', justifyContent: 'center' },
 });

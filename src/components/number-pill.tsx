@@ -1,9 +1,22 @@
 import { useEffect, useState } from 'react';
-import { StyleSheet, TextInput, type KeyboardTypeOptions } from 'react-native';
+import { useTranslation } from 'react-i18next';
+import {
+  InputAccessoryView,
+  Keyboard,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  type KeyboardTypeOptions,
+} from 'react-native';
 
 import { useColors } from '@/settings/provider';
-import { radius, typography } from '@/theme/tokens';
+import { radius, spacing, typography } from '@/theme/tokens';
 import { formatNumber, parseNumber } from '@/workouts/numbers';
+
+const ACCESSORY_ID = 'number-pill-done';
+
+export const PILL_HEIGHT = 44;
 
 /** Big grey input for one number of a set. `ghost` is last time's value, shown grey when empty. */
 export function NumberPill({
@@ -45,21 +58,38 @@ export function NumberPill({
       placeholder={ghost !== null ? format(ghost) : unit}
       placeholderTextColor={ghost !== null ? colors.textSecondary : colors.placeholder}
       keyboardType={keyboard}
+      inputAccessoryViewID={ACCESSORY_ID}
       autoFocus={autoFocus}
       selectTextOnFocus
       maxLength={8}
       accessibilityLabel={unit}
-      style={[styles.pill, typography.title, { backgroundColor: colors.surface, color: colors.text }]}
+      style={[styles.pill, { backgroundColor: colors.surface, color: colors.text }]}
     />
+  );
+}
+
+/** "Done" bar above the number keyboard, which has no return key of its own. Render once per screen. */
+export function NumberPadDone() {
+  const { t } = useTranslation();
+  const colors = useColors();
+  return (
+    <InputAccessoryView nativeID={ACCESSORY_ID} backgroundColor={colors.surface}>
+      <Pressable onPress={Keyboard.dismiss} hitSlop={8} accessibilityRole="button" style={styles.done}>
+        <Text style={[typography.body, { color: colors.text }]}>{t('common.done')}</Text>
+      </Pressable>
+    </InputAccessoryView>
   );
 }
 
 const styles = StyleSheet.create({
   pill: {
     flex: 1,
-    height: 56,
-    borderRadius: radius.md,
+    height: PILL_HEIGHT,
+    borderRadius: radius.sm,
     textAlign: 'center',
     paddingHorizontal: 8,
+    fontSize: 19,
+    fontWeight: '700',
   },
+  done: { alignSelf: 'flex-end', paddingHorizontal: spacing.md, paddingVertical: 12 },
 });

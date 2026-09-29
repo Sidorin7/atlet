@@ -7,14 +7,17 @@ import { GearIcon } from '@/components/icons';
 import { Button, GradientCard, ListRow } from '@/components/ui';
 import { db } from '@/db/client';
 import { useLive } from '@/db/use-live';
+import { dayMonthLabel } from '@/lib/dates';
+import { useToday } from '@/lib/use-today';
 import { programById, programExercisesOf } from '@/library/queries';
-import { useColors } from '@/settings/provider';
+import { useSettings } from '@/settings/provider';
 import { spacing, typography } from '@/theme/tokens';
 import { addProgramToDate } from '@/workouts/repo';
 
 export default function ProgramScreen() {
   const { t } = useTranslation();
-  const colors = useColors();
+  const { colors, language } = useSettings();
+  const today = useToday();
   const params = useLocalSearchParams<{ id: string; date?: string }>();
   const programId = Number(params.id);
   const [program] = useLive(() => programById(db, programId), [programId]);
@@ -60,7 +63,11 @@ export default function ProgramScreen() {
       {params.date && (
         <View style={styles.footer}>
           <Button
-            title={t('program.select')}
+            title={
+              params.date === today
+                ? t('program.selectToday')
+                : t('program.selectDate', { date: dayMonthLabel(params.date, language) })
+            }
             onPress={() => {
               addProgramToDate(db, params.date!, programId);
               Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);

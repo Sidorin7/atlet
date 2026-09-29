@@ -16,7 +16,7 @@ import {
   updateSet,
 } from '../repo';
 import {
-  previousSets,
+  previousSession,
   setsOf,
   workoutExercisesOf,
   workoutOnDate,
@@ -111,7 +111,7 @@ describe('workoutSetSummary', () => {
   });
 });
 
-describe('previousSets ("last time")', () => {
+describe('previousSession ("last time")', () => {
   const doneWorkout = (date: string, exerciseId: number, rows: [number, number][]) => {
     const w = addExerciseToDate(db, date, exerciseId, 'Т');
     const we = workoutExercisesOf(db, w).all().find((e) => e.exerciseId === exerciseId)!.id;
@@ -120,10 +120,12 @@ describe('previousSets ("last time")', () => {
     return w;
   };
 
-  it('returns the sets of the latest earlier workout that has the exercise', () => {
+  it('returns the date and sets of the latest earlier workout that has the exercise', () => {
     doneWorkout('2026-09-10', ex[0], [[50, 10]]);
     doneWorkout('2026-09-20', ex[0], [[60, 8], [62.5, 6]]);
-    expect(previousSets(db, ex[0], '2026-09-29').map((s) => [s.weightKg, s.reps])).toEqual([
+    const last = previousSession(db, ex[0], '2026-09-29');
+    expect(last.date).toBe('2026-09-20');
+    expect(last.sets.map((s) => [s.weightKg, s.reps])).toEqual([
       [60, 8],
       [62.5, 6],
     ]);
@@ -132,24 +134,26 @@ describe('previousSets ("last time")', () => {
   it('ignores the same day and later days', () => {
     doneWorkout('2026-09-29', ex[0], [[70, 5]]);
     doneWorkout('2026-10-05', ex[0], [[80, 3]]);
-    expect(previousSets(db, ex[0], '2026-09-29')).toEqual([]);
+    expect(previousSession(db, ex[0], '2026-09-29')).toEqual({ date: null, sets: [] });
   });
 
   it('skips earlier workouts where the exercise has no filled set', () => {
     doneWorkout('2026-09-10', ex[0], [[50, 10]]);
     addExerciseToDate(db, '2026-09-20', ex[0], 'Т'); // planned, only an empty set
-    expect(previousSets(db, ex[0], '2026-09-29').map((s) => s.weightKg)).toEqual([50]);
+    const last = previousSession(db, ex[0], '2026-09-29');
+    expect(last.date).toBe('2026-09-10');
+    expect(last.sets.map((s) => s.weightKg)).toEqual([50]);
   });
 
   it('only considers the same exercise', () => {
     doneWorkout('2026-09-20', ex[1], [[20, 12]]);
-    expect(previousSets(db, ex[0], '2026-09-29')).toEqual([]);
+    expect(previousSession(db, ex[0], '2026-09-29').sets).toEqual([]);
   });
 
   it('leaves out empty rows so ghost values line up with real sets', () => {
     const w = doneWorkout('2026-09-20', ex[0], [[60, 8]]);
     addSet(db, firstWe(w));
-    expect(previousSets(db, ex[0], '2026-09-29')).toHaveLength(1);
+    expect(previousSession(db, ex[0], '2026-09-29').sets).toHaveLength(1);
   });
 });
 

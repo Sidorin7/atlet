@@ -46,3 +46,6 @@ export const programGradients = {
 } as const;
 
 export type ProgramColor = keyof typeof programGradients;
+
+/** Settings stats card: deeper than the program blue so white text stays readable. */
+export const statsGradient = ['#3A8DFF', '#1466F0'] as const;

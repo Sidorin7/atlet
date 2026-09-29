@@ -6,11 +6,19 @@ import {
   startOfMonth,
   startOfWeek,
   dayMonthLabel,
+  shortDayLabel,
   shortMonth,
   todayISO,
   weekDates,
   weekdayIndex,
 } from '../dates';
+
+describe('shortDayLabel', () => {
+  it('adds the year only when it differs from today', () => {
+    expect(shortDayLabel('2026-09-20', 'en', '2026-09-29')).not.toMatch(/2026/);
+    expect(shortDayLabel('2025-12-30', 'en', '2026-01-02')).toMatch(/2025/);
+  });
+});
 
 describe('startOfWeek (Monday first)', () => {
   it('returns Monday for any day of the week', () => {

@@ -74,6 +74,53 @@ export function CloseIcon({ size = 18, color }: IconProps) {
   );
 }
 
+export function TrashIcon({ size = 20, color }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2}>
+      <Path strokeLinecap="round" strokeLinejoin="round" d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3" />
+    </Svg>
+  );
+}
+
+export function BackupIcon({ size = 24, color }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.8}>
+      <Path strokeLinejoin="round" d="M4 8h16v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2zM3 4h18v4H3z" />
+      <Path strokeLinecap="round" strokeLinejoin="round" d="M12 11v5M9.5 13.5 12 16l2.5-2.5" />
+    </Svg>
+  );
+}
+
+export function SunIcon({ size = 24, color }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.8}>
+      <Circle cx={12} cy={12} r={4} />
+      <Path
+        strokeLinecap="round"
+        d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"
+      />
+    </Svg>
+  );
+}
+
+export function GlobeIcon({ size = 24, color }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.8}>
+      <Circle cx={12} cy={12} r={9} />
+      <Path d="M3 12h18M12 3c2.5 2.5 3.8 5.5 3.8 9s-1.3 6.5-3.8 9c-2.5-2.5-3.8-5.5-3.8-9S9.5 5.5 12 3z" />
+    </Svg>
+  );
+}
+
+export function MailIcon({ size = 24, color }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.8}>
+      <Path strokeLinejoin="round" d="M3 6h18v12H3z" />
+      <Path strokeLinecap="round" strokeLinejoin="round" d="m3.5 6.5 8.5 7 8.5-7" />
+    </Svg>
+  );
+}
+
 export function MoreIcon({ size = 24, color }: IconProps) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill={color}>

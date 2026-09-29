@@ -1,9 +1,9 @@
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import { Pressable, ScrollView, StyleSheet } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { GearIcon, PlusIcon } from '@/components/icons';
-import { AddedBadge, EmptyText, ListRow } from '@/components/ui';
+import { AddMark, Button, EmptyText, ListRow } from '@/components/ui';
 import { db } from '@/db/client';
 import { useLive } from '@/db/use-live';
 import { exercisesInGroup, groupById } from '@/library/queries';
@@ -19,7 +19,7 @@ export default function GroupScreen() {
   const colors = useColors();
   const params = useLocalSearchParams<{ id: string; date?: string }>();
   const groupId = Number(params.id);
-  const { counts, add } = useAddToDay(params.date);
+  const { counts, total, add } = useAddToDay(params.date);
   const [group] = useLive(() => groupById(db, groupId), [groupId]);
   const items = useLive(() => exercisesInGroup(db, groupId), [groupId]);
 
@@ -54,17 +54,23 @@ export default function GroupScreen() {
             key={e.id}
             title={e.name}
             subtitle={t(`exercise.types.${e.type}`)}
-            right={<AddedBadge count={counts.get(e.id)} />}
+            right={params.date ? <AddMark count={counts.get(e.id)} /> : undefined}
             onPress={() => (add(e.id) ? undefined : editExercise(e.id))}
             onLongPress={() => editExercise(e.id)}
           />
         ))}
         {items.length === 0 && <EmptyText>{t('library.emptyGroup')}</EmptyText>}
       </ScrollView>
+      {total > 0 && (
+        <View style={styles.footer}>
+          <Button title={t('library.addedDone', { count: total })} onPress={() => router.dismissTo('/')} />
+        </View>
+      )}
     </>
   );
 }
 
 const styles = StyleSheet.create({
   list: { padding: spacing.md, gap: spacing.sm, paddingBottom: spacing.xl },
+  footer: { padding: spacing.md, paddingBottom: spacing.lg },
 });

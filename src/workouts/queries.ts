@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, isNotNull, lt, lte, max, or, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, isNotNull, lt, lte, max, min, or, sql } from 'drizzle-orm';
 
 import { exercises, muscleGroups, sets, workoutExercises, workouts } from '@/db/schema';
 import type { Reader } from '@/db/types';
@@ -47,6 +47,15 @@ export const lastDoneDate = (db: Reader, today: ISODate) =>
     .innerJoin(sets, eq(sets.workoutExerciseId, workoutExercises.id))
     .where(and(lte(workouts.date, today), filled));
 
+/** How many workouts have at least one filled set, and the date of the first of them. */
+export const doneWorkoutStats = (db: Reader) =>
+  db
+    .select({ count: sql<number>`count(distinct ${workouts.id})`, first: min(workouts.date) })
+    .from(workouts)
+    .innerJoin(workoutExercises, eq(workoutExercises.workoutId, workouts.id))
+    .innerJoin(sets, eq(sets.workoutExerciseId, workoutExercises.id))
+    .where(filled);
+
 export function daysSinceLastWorkout(db: Reader, today: ISODate): number | null {
   const last = lastDoneDate(db, today).all()[0]?.last;
   return last ? diffDays(today, last) : null;
@@ -72,24 +81,25 @@ export const workoutSetSummary = (db: Reader, workoutId: number) =>
     .groupBy(workoutExercises.id);
 
 /**
- * "Last time": the filled sets of this exercise in the latest workout before `beforeDate`
+ * "Last time": the date and filled sets of this exercise in the latest workout before `beforeDate`
  * that has any. Empty rows are left out so ghost values line up with real sets.
  */
-export function previousSets(db: Reader, exerciseId: number, beforeDate: ISODate) {
+export function previousSession(db: Reader, exerciseId: number, beforeDate: ISODate) {
   const hasFilled = sql`exists (select 1 from ${sets} where ${sets.workoutExerciseId} = ${workoutExercises.id} and (${sets.reps} is not null or ${sets.durationSec} is not null or ${sets.distanceM} is not null))`;
   const last = db
-    .select({ id: workoutExercises.id })
+    .select({ id: workoutExercises.id, date: workouts.date })
     .from(workoutExercises)
     .innerJoin(workouts, eq(workouts.id, workoutExercises.workoutId))
     .where(and(eq(workoutExercises.exerciseId, exerciseId), lt(workouts.date, beforeDate), hasFilled))
     .orderBy(desc(workouts.date), asc(workoutExercises.position))
     .limit(1)
     .all()[0];
-  if (!last) return [];
-  return db
+  if (!last) return { date: null, sets: [] };
+  const rows = db
     .select()
     .from(sets)
     .where(and(eq(sets.workoutExerciseId, last.id), filled))
     .orderBy(asc(sets.position), asc(sets.id))
     .all();
+  return { date: last.date, sets: rows };
 }

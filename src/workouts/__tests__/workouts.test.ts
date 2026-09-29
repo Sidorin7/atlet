@@ -6,7 +6,7 @@ import type { AnyDb } from '@/db/types';
 import { createExercise, createGroup, createProgram, updateProgram } from '@/library/repo';
 
 import { addExerciseToDate, addProgramToDate, removeWorkout } from '../repo';
-import { daysSinceLastWorkout, workoutExercisesOf, workoutMarks, workoutOnDate } from '../queries';
+import { daysSinceLastWorkout, doneWorkoutStats, workoutExercisesOf, workoutMarks, workoutOnDate } from '../queries';
 
 let db: AnyDb;
 let ids: number[];
@@ -129,6 +129,22 @@ describe('daysSinceLastWorkout', () => {
   it('is 0 when today is done', () => {
     done('2026-09-29');
     expect(daysSinceLastWorkout(db, '2026-09-29')).toBe(0);
+  });
+});
+
+describe('doneWorkoutStats', () => {
+  it('counts only workouts with a filled set, once each, and finds the first date', () => {
+    expect(doneWorkoutStats(db).all()[0]).toEqual({ count: 0, first: null });
+    for (const date of ['2026-09-20', '2026-09-10']) {
+      const w = addExerciseToDate(db, date, ids[0], 'Т');
+      const [we] = db.select().from(workoutExercises).where(eq(workoutExercises.workoutId, w)).all();
+      db.insert(sets).values([
+        { workoutExerciseId: we.id, position: 1, weightKg: 50, reps: 5 },
+        { workoutExerciseId: we.id, position: 2, weightKg: 50, reps: 5 },
+      ]).run();
+    }
+    addExerciseToDate(db, '2026-09-05', ids[0], 'Т'); // planned only
+    expect(doneWorkoutStats(db).all()[0]).toEqual({ count: 2, first: '2026-09-10' });
   });
 });
 

@@ -1,18 +1,29 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { GroupIcon } from '@/components/group-icons';
 import { PlusIcon } from '@/components/icons';
-import { AddedBadge, CloseButton, EmptyText, GradientCard, ListRow, Segmented, TextField } from '@/components/ui';
+import {
+  AddMark,
+  Button,
+  CloseButton,
+  EmptyText,
+  GradientCard,
+  ListRow,
+  Segmented,
+  TextField,
+} from '@/components/ui';
 import { db } from '@/db/client';
 import { useLive } from '@/db/use-live';
+import { dayMonthLabel } from '@/lib/dates';
+import { useToday } from '@/lib/use-today';
 import { allExercises, groupsWithCounts, programsWithCounts } from '@/library/queries';
 import { useAddToDay } from '@/library/use-add-to-day';
 import { filterExercises } from '@/library/utils';
-import { useColors } from '@/settings/provider';
-import { spacing } from '@/theme/tokens';
+import { useSettings } from '@/settings/provider';
+import { spacing, typography } from '@/theme/tokens';
 
 type Tab = 'exercises' | 'programs';
 
@@ -21,10 +32,11 @@ const editExercise = (id: number) =>
 
 export default function LibraryHome() {
   const { t } = useTranslation();
-  const colors = useColors();
-  const { date } = useLocalSearchParams<{ date?: string }>();
-  const { counts, add } = useAddToDay(date);
-  const [tab, setTab] = useState<Tab>('exercises');
+  const { colors, language } = useSettings();
+  const today = useToday();
+  const { date, tab: initialTab } = useLocalSearchParams<{ date?: string; tab?: Tab }>();
+  const { counts, total, add } = useAddToDay(date);
+  const [tab, setTab] = useState<Tab>(initialTab === 'programs' ? 'programs' : 'exercises');
   const [query, setQuery] = useState('');
 
   const groups = useLive(() => groupsWithCounts(db));
@@ -38,6 +50,13 @@ export default function LibraryHome() {
   return (
     <View style={styles.flex}>
       <View style={styles.top}>
+        {date && (
+          <Text style={[typography.caption, { color: colors.textSecondary }]}>
+            {t('library.target', {
+              day: date === today ? t('common.today') : dayMonthLabel(date, language),
+            })}
+          </Text>
+        )}
         <View style={styles.searchRow}>
           <TextField
             value={query}
@@ -95,7 +114,7 @@ export default function LibraryHome() {
                 left={<GroupIcon name={e.groupIcon} color={colors.text} />}
                 title={e.name}
                 subtitle={e.groupName}
-                right={<AddedBadge count={counts.get(e.id)} />}
+                right={date ? <AddMark count={counts.get(e.id)} /> : undefined}
                 onPress={() => (add(e.id) ? undefined : editExercise(e.id))}
                 onLongPress={() => editExercise(e.id)}
               />
@@ -130,6 +149,11 @@ export default function LibraryHome() {
           </>
         )}
       </ScrollView>
+      {total > 0 && (
+        <View style={styles.footer}>
+          <Button title={t('library.addedDone', { count: total })} onPress={() => router.dismissTo('/')} />
+        </View>
+      )}
     </View>
   );
 }
@@ -140,4 +164,5 @@ const styles = StyleSheet.create({
   search: { flex: 1 },
   top: { padding: spacing.md, paddingTop: spacing.lg, gap: spacing.md },
   list: { padding: spacing.md, paddingTop: 0, gap: spacing.sm, paddingBottom: spacing.xl },
+  footer: { padding: spacing.md, paddingBottom: spacing.lg },
 });

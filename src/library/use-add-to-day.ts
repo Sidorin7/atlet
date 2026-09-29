@@ -5,7 +5,10 @@ import { useTranslation } from 'react-i18next';
 import { db } from '@/db/client';
 import { addExerciseToDate } from '@/workouts/repo';
 
-/** Tapping an exercise in the library adds it to the day's workout; `counts` shows what was added here. */
+/**
+ * Tapping an exercise in the library adds it to the day's workout; `counts` shows what was added here
+ * and `total` how many taps that was.
+ */
 export function useAddToDay(date: string | undefined) {
   const { t } = useTranslation();
   const [counts, setCounts] = useState<ReadonlyMap<number, number>>(new Map());
@@ -18,5 +21,8 @@ export function useAddToDay(date: string | undefined) {
     return true;
   };
 
-  return { counts, add };
+  let total = 0;
+  for (const n of counts.values()) total += n;
+
+  return { counts, total, add };
 }
