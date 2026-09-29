@@ -77,6 +77,15 @@ function AppStack() {
           }}
         />
         <Stack.Screen
+          name="move-workout"
+          options={{
+            presentation: 'formSheet',
+            sheetAllowedDetents: [0.85],
+            sheetGrabberVisible: true,
+            sheetCornerRadius: 24,
+          }}
+        />
+        <Stack.Screen
           name="settings"
           options={{
             presentation: 'formSheet',

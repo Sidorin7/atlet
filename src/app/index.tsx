@@ -1,22 +1,24 @@
-import { Link, router } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { Link, router, useLocalSearchParams } from 'expo-router';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { LayoutAnimation, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { MonthGrid, WeekStrip, type Marks } from '@/components/calendar';
+import { MonthGrid, WeekStrip } from '@/components/calendar';
 import { EmptyIllustration } from '@/components/empty-illustration';
-import { GroupIcon } from '@/components/group-icons';
-import { ChevronRightIcon, GearIcon, HeartIcon, PlusIcon } from '@/components/icons';
-import { GradientCard, ListRow } from '@/components/ui';
+import { ChevronRightIcon, GearIcon, HeartIcon, MoreIcon, PlusIcon } from '@/components/icons';
+import { WorkoutView } from '@/components/workout-view';
 import { db } from '@/db/client';
 import { useLive } from '@/db/use-live';
 import { addMonths, diffDays, monthTitle, startOfMonth, type ISODate } from '@/lib/dates';
 import { useToday } from '@/lib/use-today';
 import { useSettings } from '@/settings/provider';
 import { radius, spacing, typography } from '@/theme/tokens';
-import { lastDoneDate, workoutExercisesOf, workoutMarks, workoutOnDate } from '@/workouts/queries';
+import { showWorkoutMenu } from '@/workouts/menu';
+import { lastDoneDate, workoutOnDate } from '@/workouts/queries';
+import { removeWorkout, renameWorkout } from '@/workouts/repo';
+import { useMarks } from '@/workouts/use-marks';
 
 export default function DayScreen() {
   const { t } = useTranslation();
@@ -26,16 +28,17 @@ export default function DayScreen() {
   const [monthOpen, setMonthOpen] = useState(false);
   const [month, setMonth] = useState(startOfMonth(today));
 
-  const markRows = useLive(() => workoutMarks(db));
-  const marks: Marks = useMemo(() => {
-    const map = new Map<ISODate, 'done' | 'planned'>();
-    for (const r of markRows) if (r.done || !map.has(r.date)) map.set(r.date, r.done ? 'done' : 'planned');
-    return map;
-  }, [markRows]);
+  const marks = useMarks();
 
   const [workout] = useLive(() => workoutOnDate(db, selected), [selected]);
-  const items = useLive(() => workoutExercisesOf(db, workout?.id ?? -1), [workout?.id]);
   const [{ last }] = useLive(() => lastDoneDate(db, today), [today]);
+
+  // After "move workout" the sheet sends us to the new day (`at` makes repeated moves to one date register).
+  const { date: requested, at } = useLocalSearchParams<{ date?: string; at?: string }>();
+  useEffect(() => {
+    if (requested) select(requested);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [requested, at]);
 
   const select = (date: ISODate) => {
     setSelected(date);
@@ -130,27 +133,14 @@ export default function DayScreen() {
         </Pressable>
       </GestureDetector>
 
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="interactive"
+        automaticallyAdjustKeyboardInsets
+      >
         {workout ? (
-          <>
-            <GradientCard
-              color={workout.color}
-              title={workout.name}
-              subtitle={t('library.exerciseCount', { count: items.length })}
-            />
-            {items.map((e) => (
-              <ListRow
-                key={e.id}
-                left={<GroupIcon name={e.groupIcon} color={colors.text} />}
-                title={e.name}
-              />
-            ))}
-            {items.length === 0 && (
-              <Text style={[typography.body, styles.centerText, { color: colors.textSecondary }]}>
-                {t('day.noExercises')}
-              </Text>
-            )}
-          </>
+          <WorkoutView key={workout.id} workout={workout} />
         ) : (
           <View style={styles.empty}>
             <EmptyIllustration disc={colors.surface} ink={colors.text} spark={colors.placeholder} />
@@ -170,6 +160,26 @@ export default function DayScreen() {
       >
         <PlusIcon size={28} color={colors.onAccent} />
       </Pressable>
+      {workout && (
+        <Pressable
+          onPress={() =>
+            showWorkoutMenu(t, workout.name, {
+              onMove: () =>
+                router.push({
+                  pathname: '/move-workout',
+                  params: { workoutId: String(workout.id), date: workout.date },
+                }),
+              onRename: (name) => renameWorkout(db, workout.id, name),
+              onDelete: () => removeWorkout(db, workout.id),
+            })
+          }
+          accessibilityRole="button"
+          accessibilityLabel={t('workout.actions')}
+          style={[styles.more, { backgroundColor: colors.surface }]}
+        >
+          <MoreIcon size={24} color={colors.text} />
+        </Pressable>
+      )}
     </SafeAreaView>
   );
 }
@@ -191,6 +201,16 @@ const styles = StyleSheet.create({
   content: { padding: spacing.md, gap: spacing.sm, paddingBottom: 120, flexGrow: 1 },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.sm, paddingTop: spacing.lg },
   centerText: { textAlign: 'center' },
+  more: {
+    position: 'absolute',
+    bottom: spacing.xl + 8,
+    right: spacing.md,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   fab: {
     position: 'absolute',
     bottom: spacing.xl,

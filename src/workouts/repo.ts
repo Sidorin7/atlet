@@ -1,6 +1,6 @@
-import { eq, max } from 'drizzle-orm';
+import { eq, max, sql } from 'drizzle-orm';
 
-import { programExercises, programs, workoutExercises, workouts } from '@/db/schema';
+import { programExercises, programs, sets, workoutExercises, workouts } from '@/db/schema';
 import type { AnyDb } from '@/db/types';
 import type { ISODate } from '@/lib/dates';
 
@@ -20,8 +20,14 @@ function appendExercises(tx: Tx, workoutId: number, exerciseIds: number[]) {
     .from(workoutExercises)
     .where(eq(workoutExercises.workoutId, workoutId))
     .get()!;
-  tx.insert(workoutExercises)
+  const created = tx
+    .insert(workoutExercises)
     .values(exerciseIds.map((exerciseId, i) => ({ workoutId, exerciseId, position: (top ?? -1) + 1 + i })))
+    .returning({ id: workoutExercises.id })
+    .all();
+  // Every exercise starts with one empty set, ready to type into.
+  tx.insert(sets)
+    .values(created.map((r) => ({ workoutExerciseId: r.id, position: 0 })))
     .run();
 }
 
@@ -72,4 +78,80 @@ export function addExerciseToDate(db: AnyDb, date: ISODate, exerciseId: number, 
 /** Cascades to the workout's exercises and sets. */
 export function removeWorkout(db: AnyDb, workoutId: number) {
   db.delete(workouts).where(eq(workouts.id, workoutId)).run();
+}
+
+// ── sets ────────────────────────────────────────────────────────────────────
+
+export type SetValues = {
+  weightKg?: number | null;
+  reps?: number | null;
+  durationSec?: number | null;
+  distanceM?: number | null;
+};
+
+export function addSet(db: AnyDb, workoutExerciseId: number): number {
+  return db.transaction((tx) => {
+    const { top } = tx
+      .select({ top: max(sets.position) })
+      .from(sets)
+      .where(eq(sets.workoutExerciseId, workoutExerciseId))
+      .get()!;
+    return tx
+      .insert(sets)
+      .values({ workoutExerciseId, position: (top ?? -1) + 1 })
+      .returning({ id: sets.id })
+      .get().id;
+  });
+}
+
+export function updateSet(db: AnyDb, setId: number, values: SetValues) {
+  db.update(sets).set(values).where(eq(sets.id, setId)).run();
+}
+
+export function deleteSet(db: AnyDb, setId: number) {
+  db.delete(sets).where(eq(sets.id, setId)).run();
+}
+
+/** Cascades to the exercise's sets; the workout itself stays even if it becomes empty. */
+export function removeWorkoutExercise(db: AnyDb, workoutExerciseId: number) {
+  db.delete(workoutExercises).where(eq(workoutExercises.id, workoutExerciseId)).run();
+}
+
+// ── workout actions ─────────────────────────────────────────────────────────
+
+export function renameWorkout(db: AnyDb, workoutId: number, name: string) {
+  const trimmed = name.trim();
+  if (trimmed === '') return;
+  db.update(workouts).set({ name: trimmed }).where(eq(workouts.id, workoutId)).run();
+}
+
+/**
+ * Moves a workout to another day and returns the id of the workout that ends up there. If that
+ * day already has a workout, the exercises (with their sets) are appended to it and the moved
+ * workout is removed, so a day never holds two.
+ */
+export function moveWorkout(db: AnyDb, workoutId: number, date: ISODate): number {
+  return db.transaction((tx) => {
+    const current = tx.select().from(workouts).where(eq(workouts.id, workoutId)).get();
+    if (!current) throw new Error(`Workout ${workoutId} not found`);
+    if (current.date === date) return workoutId;
+
+    const targetId = workoutIdOn(tx, date);
+    if (targetId === undefined) {
+      tx.update(workouts).set({ date }).where(eq(workouts.id, workoutId)).run();
+      return workoutId;
+    }
+
+    const { top } = tx
+      .select({ top: max(workoutExercises.position) })
+      .from(workoutExercises)
+      .where(eq(workoutExercises.workoutId, targetId))
+      .get()!;
+    tx.update(workoutExercises)
+      .set({ workoutId: targetId, position: sql`${workoutExercises.position} + ${(top ?? -1) + 1}` })
+      .where(eq(workoutExercises.workoutId, workoutId))
+      .run();
+    tx.delete(workouts).where(eq(workouts.id, workoutId)).run();
+    return targetId;
+  });
 }
