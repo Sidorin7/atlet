@@ -4,6 +4,7 @@ export const ru = {
     save: 'Сохранить',
     cancel: 'Отмена',
     delete: 'Удалить',
+    close: 'Закрыть',
     error: 'Ошибка',
   },
   day: {

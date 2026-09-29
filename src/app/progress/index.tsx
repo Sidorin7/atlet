@@ -1,11 +1,11 @@
-import { router } from 'expo-router';
+import { router, Stack } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { BarSeries, type Bar } from '@/components/bar-series';
 import { GroupIcon } from '@/components/group-icons';
-import { EmptyText, ListRow, SectionLabel, Segmented } from '@/components/ui';
+import { CloseButton, EmptyText, ListRow, SectionLabel, Segmented } from '@/components/ui';
 import { db } from '@/db/client';
 import { useLive } from '@/db/use-live';
 import { dayMonthLabel, dayNumber, shortMonth } from '@/lib/dates';
@@ -37,9 +37,20 @@ export default function ProgressScreen() {
   const volumeMax = Math.max(1, ...buckets.map((b) => b.volume));
   const workoutsMax = Math.max(1, ...buckets.map((b) => b.workouts));
 
+  const close = (
+    <Stack.Screen
+      options={{
+        headerRight: () => (
+          <CloseButton label={t('common.close')} onPress={() => router.dismissTo('/')} />
+        ),
+      }}
+    />
+  );
+
   if (rows.length === 0) {
     return (
       <View style={styles.emptyWrap}>
+        {close}
         <EmptyText>{t('progress.empty')}</EmptyText>
       </View>
     );
@@ -47,6 +58,7 @@ export default function ProgressScreen() {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
+      {close}
       <Segmented
         value={g}
         onChange={setG}

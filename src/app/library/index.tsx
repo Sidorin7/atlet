@@ -5,7 +5,7 @@ import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { GroupIcon } from '@/components/group-icons';
 import { PlusIcon } from '@/components/icons';
-import { AddedBadge, EmptyText, GradientCard, ListRow, Segmented, TextField } from '@/components/ui';
+import { AddedBadge, CloseButton, EmptyText, GradientCard, ListRow, Segmented, TextField } from '@/components/ui';
 import { db } from '@/db/client';
 import { useLive } from '@/db/use-live';
 import { allExercises, groupsWithCounts, programsWithCounts } from '@/library/queries';
@@ -38,14 +38,18 @@ export default function LibraryHome() {
   return (
     <View style={styles.flex}>
       <View style={styles.top}>
-        <TextField
-          value={query}
-          onChangeText={setQuery}
-          placeholder={t('library.search')}
-          autoCorrect={false}
-          returnKeyType="search"
-          clearButtonMode="while-editing"
-        />
+        <View style={styles.searchRow}>
+          <TextField
+            value={query}
+            onChangeText={setQuery}
+            placeholder={t('library.search')}
+            autoCorrect={false}
+            returnKeyType="search"
+            clearButtonMode="while-editing"
+            style={styles.search}
+          />
+          <CloseButton label={t('common.close')} onPress={() => router.dismissTo('/')} />
+        </View>
         <Segmented
           value={tab}
           onChange={setTab}
@@ -132,6 +136,8 @@ export default function LibraryHome() {
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
+  searchRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  search: { flex: 1 },
   top: { padding: spacing.md, paddingTop: spacing.lg, gap: spacing.md },
   list: { padding: spacing.md, paddingTop: 0, gap: spacing.sm, paddingBottom: spacing.xl },
 });

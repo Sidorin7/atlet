@@ -5,7 +5,7 @@ import { Pressable, StyleSheet, Text, TextInput, View, type TextInputProps } fro
 import { useColors } from '@/settings/provider';
 import { programGradients, radius, spacing, typography, type ProgramColor } from '@/theme/tokens';
 
-import { CheckIcon, ChevronRightIcon } from './icons';
+import { CheckIcon, ChevronRightIcon, CloseIcon } from './icons';
 
 export function TextField(props: TextInputProps) {
   const colors = useColors();
@@ -160,6 +160,22 @@ export function AddedBadge({ count }: { count?: number }) {
   );
 }
 
+/** Closes a sheet from its first screen, where there is no back button. */
+export function CloseButton({ onPress, label }: { onPress: () => void; label: string }) {
+  const colors = useColors();
+  return (
+    <Pressable
+      onPress={onPress}
+      hitSlop={8}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      style={[styles.close, { backgroundColor: colors.surface }]}
+    >
+      <CloseIcon color={colors.text} />
+    </Pressable>
+  );
+}
+
 export function SectionLabel({ children }: { children: string }) {
   const colors = useColors();
   return <Text style={[typography.caption, styles.label, { color: colors.textSecondary }]}>{children}</Text>;
@@ -260,6 +276,7 @@ const styles = StyleSheet.create({
     minHeight: 60,
   },
   rowText: { flex: 1, gap: 2 },
+  close: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
   badge: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   label: { marginBottom: spacing.sm, marginTop: spacing.sm },
   empty: { textAlign: 'center', marginTop: spacing.xl },

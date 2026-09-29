@@ -6,6 +6,7 @@ export const en: Translation = {
     save: 'Save',
     cancel: 'Cancel',
     delete: 'Delete',
+    close: 'Close',
     error: 'Error',
   },
   day: {
