@@ -27,7 +27,8 @@ export default function RootLayout() {
 
   useEffect(() => {
     if (!success) return;
-    seedDefaults(db, deviceLanguage).then(() => setSeeded(true));
+    seedDefaults(db, deviceLanguage);
+    setSeeded(true);
   }, [success]);
 
   useEffect(() => {
@@ -63,6 +64,15 @@ function AppStack() {
       <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
       <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.background } }}>
         <Stack.Screen name="index" />
+        <Stack.Screen
+          name="library"
+          options={{
+            presentation: 'formSheet',
+            sheetAllowedDetents: [0.75, 1],
+            sheetGrabberVisible: true,
+            sheetCornerRadius: 24,
+          }}
+        />
         <Stack.Screen
           name="settings"
           options={{

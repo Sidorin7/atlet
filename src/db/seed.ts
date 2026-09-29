@@ -3,8 +3,8 @@ import { count, eq } from 'drizzle-orm';
 import { resources } from '@/i18n';
 import type { Language } from '@/settings/resolve';
 
-import type { Db } from './client';
 import { muscleGroups, settings } from './schema';
+import type { AnyDb } from './types';
 
 const DEFAULT_GROUP_KEYS = [
   'stretch', 'cardio', 'chest', 'back', 'arms', 'legs', 'shoulders', 'abs',
@@ -18,12 +18,12 @@ export function defaultGroups(lng: Language) {
 const SEEDED_KEY = 'seeded';
 
 /** Runs once per install: groups deleted later by the user are not recreated. */
-export async function seedDefaults(db: Db, lng: Language) {
-  const seeded = await db.select().from(settings).where(eq(settings.key, SEEDED_KEY));
-  if (seeded.length > 0) return;
-  await db.transaction(async (tx) => {
-    const [{ n }] = await tx.select({ n: count() }).from(muscleGroups);
-    if (n === 0) await tx.insert(muscleGroups).values(defaultGroups(lng));
-    await tx.insert(settings).values({ key: SEEDED_KEY, value: '1' });
+export function seedDefaults(db: AnyDb, lng: Language) {
+  db.transaction((tx) => {
+    const seeded = tx.select().from(settings).where(eq(settings.key, SEEDED_KEY)).all();
+    if (seeded.length > 0) return;
+    const { n } = tx.select({ n: count() }).from(muscleGroups).get()!;
+    if (n === 0) tx.insert(muscleGroups).values(defaultGroups(lng)).run();
+    tx.insert(settings).values({ key: SEEDED_KEY, value: '1' }).run();
   });
 }

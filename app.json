@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "GymApp",
-    "slug": "gymapp",
+    "slug": "gym",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -44,6 +44,13 @@
     "platforms": [
       "ios",
       "android"
-    ]
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "44b38c3c-49b4-4028-92a4-0b81a49928e6"
+      }
+    },
+    "owner": "sidorin8s-team"
   }
 }

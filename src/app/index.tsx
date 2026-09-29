@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { GearIcon, HeartIcon } from '@/components/icons';
+import { GearIcon, HeartIcon, PlusIcon } from '@/components/icons';
 import { db } from '@/db/client';
 import { muscleGroups } from '@/db/schema';
 import { useColors } from '@/settings/provider';
@@ -38,6 +38,15 @@ export default function DayScreen() {
           </View>
         ))}
       </ScrollView>
+      <Link href="/library" asChild>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t('library.title')}
+          style={StyleSheet.flatten([styles.fab, { backgroundColor: colors.accent }])}
+        >
+          <PlusIcon size={28} color={colors.onAccent} />
+        </Pressable>
+      </Link>
     </SafeAreaView>
   );
 }
@@ -54,4 +63,14 @@ const styles = StyleSheet.create({
   headerButtons: { flexDirection: 'row', gap: spacing.md },
   list: { padding: spacing.md, gap: spacing.sm },
   row: { borderRadius: radius.md, padding: spacing.md },
+  fab: {
+    position: 'absolute',
+    bottom: spacing.xl,
+    alignSelf: 'center',
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 });

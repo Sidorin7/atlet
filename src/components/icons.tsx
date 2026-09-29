@@ -32,3 +32,44 @@ export function CheckIcon({ size = 20, color }: IconProps) {
     </Svg>
   );
 }
+
+export function ChevronRightIcon({ size = 18, color }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2.5}>
+      <Path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+    </Svg>
+  );
+}
+
+export function PlusIcon({ size = 22, color }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2.5}>
+      <Path strokeLinecap="round" d="M12 5v14M5 12h14" />
+    </Svg>
+  );
+}
+
+export function SearchIcon({ size = 20, color }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2.5}>
+      <Circle cx={11} cy={11} r={6.5} />
+      <Path strokeLinecap="round" d="M16 16l4 4" />
+    </Svg>
+  );
+}
+
+export function GripIcon({ size = 20, color }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2.5}>
+      <Path strokeLinecap="round" d="M5 8h14M5 12h14M5 16h14" />
+    </Svg>
+  );
+}
+
+export function CloseIcon({ size = 18, color }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2.5}>
+      <Path strokeLinecap="round" d="M6 6l12 12M18 6 6 18" />
+    </Svg>
+  );
+}
