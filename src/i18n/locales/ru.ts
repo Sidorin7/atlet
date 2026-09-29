@@ -6,6 +6,18 @@ export const ru = {
     delete: 'Удалить',
     error: 'Ошибка',
   },
+  day: {
+    noWorkoutsFor_one: 'Нет тренировок {{count}} день',
+    noWorkoutsFor_few: 'Нет тренировок {{count}} дня',
+    noWorkoutsFor_many: 'Нет тренировок {{count}} дней',
+    noWorkoutsFor_other: 'Нет тренировок {{count}} дней',
+    noWorkouts: 'Нет тренировок',
+    nothingPlanned: 'Ничего не запланировано',
+    noWorkoutThatDay: 'В этот день тренировок нет',
+    hint: 'Нажмите +, чтобы выбрать программу или упражнения',
+    defaultWorkout: 'Тренировка',
+    noExercises: 'В тренировке пока нет упражнений',
+  },
   library: {
     title: 'Библиотека',
     search: 'Поиск',

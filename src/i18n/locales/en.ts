@@ -8,6 +8,18 @@ export const en: Translation = {
     delete: 'Delete',
     error: 'Error',
   },
+  day: {
+    noWorkoutsFor_one: 'No workouts for {{count}} day',
+    noWorkoutsFor_few: 'No workouts for {{count}} days',
+    noWorkoutsFor_many: 'No workouts for {{count}} days',
+    noWorkoutsFor_other: 'No workouts for {{count}} days',
+    noWorkouts: 'No workouts',
+    nothingPlanned: 'Nothing planned',
+    noWorkoutThatDay: 'No workouts that day',
+    hint: 'Tap + to pick a program or exercises',
+    defaultWorkout: 'Workout',
+    noExercises: 'No exercises in this workout yet',
+  },
   library: {
     title: 'Library',
     search: 'Search',

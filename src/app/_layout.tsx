@@ -5,6 +5,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { db } from '@/db/client';
 import { seedDefaults } from '@/db/seed';
@@ -45,9 +46,11 @@ export default function RootLayout() {
   if (!seeded) return null;
 
   return (
-    <SettingsProvider>
-      <AppStack />
-    </SettingsProvider>
+    <GestureHandlerRootView style={styles.root}>
+      <SettingsProvider>
+        <AppStack />
+      </SettingsProvider>
+    </GestureHandlerRootView>
   );
 }
 
@@ -88,5 +91,6 @@ function AppStack() {
 }
 
 const styles = StyleSheet.create({
+  root: { flex: 1 },
   error: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
 });

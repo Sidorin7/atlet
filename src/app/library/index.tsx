@@ -1,23 +1,29 @@
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { GroupIcon } from '@/components/group-icons';
 import { PlusIcon } from '@/components/icons';
-import { EmptyText, GradientCard, ListRow, Segmented, TextField } from '@/components/ui';
+import { AddedBadge, EmptyText, GradientCard, ListRow, Segmented, TextField } from '@/components/ui';
 import { db } from '@/db/client';
 import { useLive } from '@/db/use-live';
 import { allExercises, groupsWithCounts, programsWithCounts } from '@/library/queries';
+import { useAddToDay } from '@/library/use-add-to-day';
 import { filterExercises } from '@/library/utils';
 import { useColors } from '@/settings/provider';
 import { spacing } from '@/theme/tokens';
 
 type Tab = 'exercises' | 'programs';
 
+const editExercise = (id: number) =>
+  router.push({ pathname: '/library/exercise-edit', params: { id: String(id) } });
+
 export default function LibraryHome() {
   const { t } = useTranslation();
   const colors = useColors();
+  const { date } = useLocalSearchParams<{ date?: string }>();
+  const { counts, add } = useAddToDay(date);
   const [tab, setTab] = useState<Tab>('exercises');
   const [query, setQuery] = useState('');
 
@@ -70,7 +76,7 @@ export default function LibraryHome() {
                 subtitle={t('library.exerciseCount', { count: g.exerciseCount })}
                 chevron
                 onPress={() =>
-                  router.push({ pathname: '/library/group/[id]', params: { id: String(g.id) } })
+                  router.push({ pathname: '/library/group/[id]', params: { id: String(g.id), date } })
                 }
               />
             ))}
@@ -85,9 +91,9 @@ export default function LibraryHome() {
                 left={<GroupIcon name={e.groupIcon} color={colors.text} />}
                 title={e.name}
                 subtitle={e.groupName}
-                onPress={() =>
-                  router.push({ pathname: '/library/exercise-edit', params: { id: String(e.id) } })
-                }
+                right={<AddedBadge count={counts.get(e.id)} />}
+                onPress={() => (add(e.id) ? undefined : editExercise(e.id))}
+                onLongPress={() => editExercise(e.id)}
               />
             ))}
             {found.length === 0 && <EmptyText>{t('library.noResults')}</EmptyText>}
@@ -110,7 +116,7 @@ export default function LibraryHome() {
                 title={p.name}
                 subtitle={t('library.exerciseCount', { count: p.exerciseCount })}
                 onPress={() =>
-                  router.push({ pathname: '/library/program/[id]', params: { id: String(p.id) } })
+                  router.push({ pathname: '/library/program/[id]', params: { id: String(p.id), date } })
                 }
               />
             ))}

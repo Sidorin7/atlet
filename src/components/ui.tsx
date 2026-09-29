@@ -149,6 +149,17 @@ export function RadioRow({ title, selected, onPress }: { title: string; selected
   );
 }
 
+export function AddedBadge({ count }: { count?: number }) {
+  const colors = useColors();
+  if (!count) return null;
+  return (
+    <View style={styles.badge}>
+      {count > 1 && <Text style={[typography.caption, { color: colors.textSecondary }]}>×{count}</Text>}
+      <CheckIcon color={colors.text} />
+    </View>
+  );
+}
+
 export function SectionLabel({ children }: { children: string }) {
   const colors = useColors();
   return <Text style={[typography.caption, styles.label, { color: colors.textSecondary }]}>{children}</Text>;
@@ -249,6 +260,7 @@ const styles = StyleSheet.create({
     minHeight: 60,
   },
   rowText: { flex: 1, gap: 2 },
+  badge: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   label: { marginBottom: spacing.sm, marginTop: spacing.sm },
   empty: { textAlign: 'center', marginTop: spacing.xl },
   card: {

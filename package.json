@@ -3,7 +3,6 @@
   "main": "expo-router/entry",
   "version": "1.0.0",
   "dependencies": {
-    "dayjs": "^1.11.23",
     "drizzle-orm": "^0.45.3",
     "expo": "~57.0.26",
     "expo-constants": "~57.0.19",
@@ -20,6 +19,7 @@
     "expo-status-bar": "~57.0.1",
     "expo-system-ui": "~57.0.4",
     "i18next": "^26.4.2",
+    "intl-pluralrules": "^2.0.1",
     "react": "19.2.3",
     "react-i18next": "^17.0.15",
     "react-native": "0.86.3",

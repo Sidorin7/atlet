@@ -3,17 +3,23 @@ import { useTranslation } from 'react-i18next';
 import { Pressable, ScrollView, StyleSheet } from 'react-native';
 
 import { GearIcon, PlusIcon } from '@/components/icons';
-import { EmptyText, ListRow } from '@/components/ui';
+import { AddedBadge, EmptyText, ListRow } from '@/components/ui';
 import { db } from '@/db/client';
 import { useLive } from '@/db/use-live';
 import { exercisesInGroup, groupById } from '@/library/queries';
+import { useAddToDay } from '@/library/use-add-to-day';
 import { useColors } from '@/settings/provider';
 import { spacing } from '@/theme/tokens';
+
+const editExercise = (id: number) =>
+  router.push({ pathname: '/library/exercise-edit', params: { id: String(id) } });
 
 export default function GroupScreen() {
   const { t } = useTranslation();
   const colors = useColors();
-  const groupId = Number(useLocalSearchParams<{ id: string }>().id);
+  const params = useLocalSearchParams<{ id: string; date?: string }>();
+  const groupId = Number(params.id);
+  const { counts, add } = useAddToDay(params.date);
   const [group] = useLive(() => groupById(db, groupId), [groupId]);
   const items = useLive(() => exercisesInGroup(db, groupId), [groupId]);
 
@@ -48,9 +54,9 @@ export default function GroupScreen() {
             key={e.id}
             title={e.name}
             subtitle={t(`exercise.types.${e.type}`)}
-            onPress={() =>
-              router.push({ pathname: '/library/exercise-edit', params: { id: String(e.id) } })
-            }
+            right={<AddedBadge count={counts.get(e.id)} />}
+            onPress={() => (add(e.id) ? undefined : editExercise(e.id))}
+            onLongPress={() => editExercise(e.id)}
           />
         ))}
         {items.length === 0 && <EmptyText>{t('library.emptyGroup')}</EmptyText>}

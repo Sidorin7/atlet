@@ -1,19 +1,22 @@
+import * as Haptics from 'expo-haptics';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { GearIcon } from '@/components/icons';
-import { GradientCard, ListRow } from '@/components/ui';
+import { Button, GradientCard, ListRow } from '@/components/ui';
 import { db } from '@/db/client';
 import { useLive } from '@/db/use-live';
 import { programById, programExercisesOf } from '@/library/queries';
 import { useColors } from '@/settings/provider';
 import { spacing, typography } from '@/theme/tokens';
+import { addProgramToDate } from '@/workouts/repo';
 
 export default function ProgramScreen() {
   const { t } = useTranslation();
   const colors = useColors();
-  const programId = Number(useLocalSearchParams<{ id: string }>().id);
+  const params = useLocalSearchParams<{ id: string; date?: string }>();
+  const programId = Number(params.id);
   const [program] = useLive(() => programById(db, programId), [programId]);
   const items = useLive(() => programExercisesOf(db, programId), [programId]);
 
@@ -53,8 +56,19 @@ export default function ProgramScreen() {
             title={e.name}
           />
         ))}
-        <View />
       </ScrollView>
+      {params.date && (
+        <View style={styles.footer}>
+          <Button
+            title={t('program.select')}
+            onPress={() => {
+              addProgramToDate(db, params.date!, programId);
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+              router.dismissTo('/');
+            }}
+          />
+        </View>
+      )}
     </>
   );
 }
@@ -62,4 +76,5 @@ export default function ProgramScreen() {
 const styles = StyleSheet.create({
   list: { padding: spacing.md, gap: spacing.sm, paddingBottom: spacing.xl },
   index: { width: 22 },
+  footer: { padding: spacing.md },
 });

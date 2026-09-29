@@ -1,11 +1,11 @@
 import { and, asc, count, eq } from 'drizzle-orm';
 
 import { exercises, muscleGroups, programExercises, programs } from '@/db/schema';
-import type { AnyDb } from '@/db/types';
+import type { Reader } from '@/db/types';
 
 // Builders are returned unexecuted so screens can wrap them in useLiveQuery and tests can call .all().
 
-export const groupsWithCounts = (db: AnyDb) =>
+export const groupsWithCounts = (db: Reader) =>
   db
     .select({
       id: muscleGroups.id,
@@ -19,7 +19,7 @@ export const groupsWithCounts = (db: AnyDb) =>
     .groupBy(muscleGroups.id)
     .orderBy(asc(muscleGroups.position));
 
-export const exercisesInGroup = (db: AnyDb, groupId: number) =>
+export const exercisesInGroup = (db: Reader, groupId: number) =>
   db
     .select()
     .from(exercises)
@@ -27,7 +27,7 @@ export const exercisesInGroup = (db: AnyDb, groupId: number) =>
     .orderBy(asc(exercises.name));
 
 /** Every non-archived exercise with its group, for search across all groups. */
-export const allExercises = (db: AnyDb) =>
+export const allExercises = (db: Reader) =>
   db
     .select({
       id: exercises.id,
@@ -42,7 +42,7 @@ export const allExercises = (db: AnyDb) =>
     .where(eq(exercises.archived, false))
     .orderBy(asc(exercises.name));
 
-export const programsWithCounts = (db: AnyDb) =>
+export const programsWithCounts = (db: Reader) =>
   db
     .select({
       id: programs.id,
@@ -55,7 +55,7 @@ export const programsWithCounts = (db: AnyDb) =>
     .groupBy(programs.id)
     .orderBy(asc(programs.id));
 
-export const programExercisesOf = (db: AnyDb, programId: number) =>
+export const programExercisesOf = (db: Reader, programId: number) =>
   db
     .select({
       id: programExercises.id,
@@ -69,11 +69,11 @@ export const programExercisesOf = (db: AnyDb, programId: number) =>
     .where(eq(programExercises.programId, programId))
     .orderBy(asc(programExercises.position));
 
-export const programById = (db: AnyDb, id: number) =>
+export const programById = (db: Reader, id: number) =>
   db.select().from(programs).where(eq(programs.id, id));
 
-export const groupById = (db: AnyDb, id: number) =>
+export const groupById = (db: Reader, id: number) =>
   db.select().from(muscleGroups).where(eq(muscleGroups.id, id));
 
-export const exerciseById = (db: AnyDb, id: number) =>
+export const exerciseById = (db: Reader, id: number) =>
   db.select().from(exercises).where(eq(exercises.id, id));
