@@ -74,6 +74,14 @@ export function CloseIcon({ size = 18, color }: IconProps) {
   );
 }
 
+export function ChartIcon({ size = 20, color }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2}>
+      <Path strokeLinecap="round" strokeLinejoin="round" d="M4 4v16h16M8 15l4-4 3 3 5-6" />
+    </Svg>
+  );
+}
+
 export function TrashIcon({ size = 20, color }: IconProps) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2}>

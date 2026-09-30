@@ -16,7 +16,7 @@ export type ProgressRow = {
 };
 
 export type Granularity = 'week' | 'month';
-export type Range = 'month' | 'quarter' | 'year' | 'all';
+export type Range = 'week' | 'month' | 'year' | 'all';
 
 /** Tonnage: weight × reps, counted for weight exercises only (a belt load is not tonnage). */
 export function volumeOf(r: ProgressRow): number {
@@ -47,7 +47,7 @@ export function periodBuckets(rows: readonly ProgressRow[], g: Granularity, toda
   return starts.map((start) => ({ start, volume: volume.get(start)!, workouts: days.get(start)!.size }));
 }
 
-const RANGE_DAYS: Record<Exclude<Range, 'all'>, number> = { month: 30, quarter: 91, year: 365 };
+const RANGE_DAYS: Record<Exclude<Range, 'all'>, number> = { week: 7, month: 30, year: 365 };
 
 export const rangeStart = (today: ISODate, range: Range): ISODate | null =>
   range === 'all' ? null : addDays(today, -RANGE_DAYS[range]);
@@ -91,11 +91,16 @@ export function exerciseSeries(
 
 export type HistoryDay = { date: ISODate; sets: ProgressRow[] };
 
-/** Sets of one exercise grouped by day, newest day first; sets keep their entry order. */
-export function exerciseHistory(rows: readonly ProgressRow[], exerciseId: number): HistoryDay[] {
+/** Sets of one exercise grouped by day, newest day first, from `from` on; sets keep their entry order. */
+export function exerciseHistory(
+  rows: readonly ProgressRow[],
+  exerciseId: number,
+  from: ISODate | null = null,
+): HistoryDay[] {
   const byDay = new Map<ISODate, ProgressRow[]>();
   for (const r of rows) {
-    if (r.exerciseId === exerciseId) byDay.set(r.date, [...(byDay.get(r.date) ?? []), r]);
+    if (r.exerciseId !== exerciseId || (from !== null && r.date < from)) continue;
+    byDay.set(r.date, [...(byDay.get(r.date) ?? []), r]);
   }
   return [...byDay.entries()].sort(([a], [b]) => (a < b ? 1 : -1)).map(([date, sets]) => ({ date, sets }));
 }

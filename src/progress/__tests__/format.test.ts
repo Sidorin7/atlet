@@ -1,4 +1,4 @@
-import { axisScale, formatSetLine, formatVolume, shouldLabel } from '../format';
+import { formatSetLine, formatVolume } from '../format';
 import type { ProgressRow } from '../aggregate';
 
 const row = (over: Partial<ProgressRow>): ProgressRow => ({
@@ -45,32 +45,5 @@ describe('formatSetLine', () => {
   });
   it('falls back to the reps alone when only reps are known for a weight exercise', () => {
     expect(formatSetLine(row({ reps: 8 }), units)).toBe('8');
-  });
-});
-
-describe('axisScale', () => {
-  it('picks a round step so 4 sections cover the data', () => {
-    expect(axisScale(65)).toEqual({ max: 80, step: 20 });
-    expect(axisScale(100)).toEqual({ max: 100, step: 25 });
-    expect(axisScale(7)).toEqual({ max: 8, step: 2 });
-    expect(axisScale(12340)).toEqual({ max: 20000, step: 5000 });
-  });
-  it('never returns a zero range', () => {
-    expect(axisScale(0)).toEqual({ max: 4, step: 1 });
-    expect(axisScale(-5)).toEqual({ max: 4, step: 1 });
-  });
-  it('always covers the value', () => {
-    for (const v of [1, 3, 17, 99, 250, 1234, 98765]) expect(axisScale(v).max).toBeGreaterThanOrEqual(v);
-  });
-});
-
-describe('shouldLabel', () => {
-  it('always labels the newest point and then every `every`-th point going back', () => {
-    const labelled = (n: number, every: number) =>
-      Array.from({ length: n }, (_, i) => i).filter((i) => shouldLabel(i, n, every));
-    expect(labelled(7, 3)).toEqual([0, 3, 6]);
-    expect(labelled(8, 3)).toEqual([1, 4, 7]);
-    expect(labelled(5, 1)).toEqual([0, 1, 2, 3, 4]);
-    expect(labelled(1, 4)).toEqual([0]);
   });
 });

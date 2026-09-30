@@ -80,8 +80,8 @@ describe('periodBuckets', () => {
 
 describe('rangeStart', () => {
   it('goes back a fixed number of days, or is unbounded for all', () => {
+    expect(rangeStart('2026-09-30', 'week')).toBe('2026-09-23');
     expect(rangeStart('2026-09-30', 'month')).toBe('2026-08-31');
-    expect(rangeStart('2026-09-30', 'quarter')).toBe('2026-07-01');
     expect(rangeStart('2026-09-30', 'year')).toBe('2025-09-30');
     expect(rangeStart('2026-09-30', 'all')).toBeNull();
   });
@@ -138,6 +138,11 @@ describe('exerciseHistory', () => {
     const history = exerciseHistory(rows, 1);
     expect(history.map((d) => d.date)).toEqual(['2026-09-25', '2026-09-20']);
     expect(history[1].sets.map((s) => s.id)).toEqual([1, 2]);
+  });
+
+  it('leaves out days before the start of the range', () => {
+    const rows = [row({ date: '2026-09-20' }), row({ date: '2026-09-25' })];
+    expect(exerciseHistory(rows, 1, '2026-09-23').map((d) => d.date)).toEqual(['2026-09-25']);
   });
 });
 

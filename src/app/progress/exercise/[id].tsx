@@ -1,37 +1,45 @@
-import { Stack, useLocalSearchParams } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { router, Stack, useLocalSearchParams } from 'expo-router';
+import { useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { LineChart } from 'react-native-gifted-charts';
 
-import { EmptyText, SectionLabel, Segmented } from '@/components/ui';
+import { CloseButton, EmptyText, Segmented } from '@/components/ui';
 import { db } from '@/db/client';
 import { useLive } from '@/db/use-live';
-import { dayMonthLabel } from '@/lib/dates';
+import { monthYearLabel, shortDayLabel } from '@/lib/dates';
 import { useToday } from '@/lib/use-today';
 import {
   exerciseHistory,
   exerciseSeries,
   rangeStart,
+  type HistoryDay,
   type ProgressRow,
   type Range,
   type SeriesPoint,
 } from '@/progress/aggregate';
-import { axisScale, formatSetLine, shouldLabel } from '@/progress/format';
+import { formatSetLine, formatVolume } from '@/progress/format';
 import { progressRows } from '@/progress/queries';
 import { useSettings } from '@/settings/provider';
 import { radius, spacing, typography } from '@/theme/tokens';
 import { formatNumber } from '@/workouts/numbers';
 
-const shortDate = (iso: string) => `${iso.slice(8, 10)}.${iso.slice(5, 7)}`;
+type Pick = 'primary' | 'secondary';
+/** A tile above the chart; the first one is the dark line, the second the grey one. */
+type Stat = { label: string; pick: Pick; format: (n: number) => string };
+
+const CHART_HEIGHT = 200;
+/** Each line is scaled to its own maximum, which sits a little below the top. */
+const TOP = 100;
+const CEILING = 115;
 
 export default function ExerciseProgressScreen() {
   const { t } = useTranslation();
-  const { colors, language } = useSettings();
+  const { colors } = useSettings();
   const { width } = useWindowDimensions();
   const exerciseId = Number(useLocalSearchParams<{ id: string }>().id);
   const today = useToday();
-  const [range, setRange] = useState<Range>('quarter');
+  const [range, setRange] = useState<Range>('month');
 
   const all = useLive(() => progressRows(db));
   const rows = useMemo(() => all.filter((r) => r.exerciseId === exerciseId), [all, exerciseId]);
@@ -40,121 +48,209 @@ export default function ExerciseProgressScreen() {
 
   const from = rangeStart(today, range);
   const series = useMemo(() => exerciseSeries(rows, exerciseId, type, from), [rows, exerciseId, type, from]);
-  const history = useMemo(() => exerciseHistory(rows, exerciseId), [rows, exerciseId]);
+  const history = useMemo(() => exerciseHistory(rows, exerciseId, from).reverse(), [rows, exerciseId, from]);
 
-  const titles = {
-    weight: [t('progress.maxWeight'), t('progress.tonnage')],
-    bodyweight: [t('progress.maxReps'), t('progress.totalReps')],
-    cardio: [t('progress.minutes'), t('progress.kilometres')],
-  }[type];
-
-  const units = { min: t('workout.unitMin'), km: t('workout.unitKm') };
-  const chartWidth = width - spacing.md * 2 - spacing.lg * 2 - 36;
+  // The "work done" number leads: volume for weights, total reps for bodyweight, distance for cardio.
+  const stats: [Stat, Stat] = {
+    weight: [
+      { label: t('progress.statVolume'), pick: 'secondary', format: formatVolume },
+      { label: t('progress.statWeight'), pick: 'primary', format: formatNumber },
+    ],
+    bodyweight: [
+      { label: t('progress.statTotalReps'), pick: 'secondary', format: formatVolume },
+      { label: t('progress.statBestSet'), pick: 'primary', format: formatNumber },
+    ],
+    cardio: [
+      { label: t('progress.statDistance'), pick: 'secondary', format: formatNumber },
+      { label: t('progress.statTime'), pick: 'primary', format: formatNumber },
+    ],
+  }[type] as [Stat, Stat];
 
   return (
     <>
-      <Stack.Screen options={{ title: first?.name ?? '' }} />
+      {/* Also opened straight from a workout (swipe right on an exercise), with nothing to go back to. */}
+      <Stack.Screen
+        options={{
+          title: first?.name ?? '',
+          headerRight: () => <CloseButton label={t('common.close')} onPress={() => router.dismissTo('/')} />,
+        }}
+      />
       <ScrollView contentContainerStyle={styles.container}>
         <Segmented
           value={range}
           onChange={setRange}
           options={[
+            { value: 'week', label: t('progress.range1w') },
             { value: 'month', label: t('progress.range1m') },
-            { value: 'quarter', label: t('progress.range3m') },
             { value: 'year', label: t('progress.range1y') },
             { value: 'all', label: t('progress.rangeAll') },
           ]}
         />
 
-        <SeriesChart title={titles[0]} points={series} pick="primary" width={chartWidth} noData={t('progress.noData')} />
-        <SeriesChart title={titles[1]} points={series} pick="secondary" width={chartWidth} noData={t('progress.noData')} />
+        {series.length === 0 ? (
+          <EmptyText>{t('progress.noData')}</EmptyText>
+        ) : (
+          <DayChart key={range} points={series} stats={stats} width={width - spacing.md * 2} />
+        )}
 
-        <SectionLabel>{t('progress.history')}</SectionLabel>
-        <View style={styles.history}>
-          {history.length === 0 && <EmptyText>{t('progress.noData')}</EmptyText>}
-          {history.map((day) => (
-            <View key={day.date} style={[styles.day, { backgroundColor: colors.surface }]}>
-              <Text style={[typography.body, { color: colors.text }]}>{dayMonthLabel(day.date, language)}</Text>
-              <Text style={[typography.body, { color: colors.textSecondary }]}>
-                {day.sets.map((s) => formatSetLine(s, units)).join('   ')}
-              </Text>
-            </View>
-          ))}
-        </View>
+        {history.length > 0 && (
+          <View style={styles.historyBlock}>
+            <Text style={[typography.title, { color: colors.text }]}>{t('progress.history')}</Text>
+            <HistoryColumns history={history} />
+          </View>
+        )}
       </ScrollView>
     </>
   );
 }
 
-function SeriesChart({
-  title,
-  points,
-  pick,
-  width,
-  noData,
-}: {
-  title: string;
-  points: SeriesPoint[];
-  pick: 'primary' | 'secondary';
-  width: number;
-  noData: string;
-}) {
-  const { colors } = useSettings();
-  const values = points.map((p) => p[pick]);
-  const scale = axisScale(Math.max(0, ...values));
-  const spacingX = Math.max(36, (width - 24) / Math.max(1, points.length - 1));
-  // Label every point when there is room, otherwise every few points so dates never overlap.
-  const every = Math.max(1, Math.ceil(56 / spacingX));
+/**
+ * Two tiles over two overlaid lines. At rest the tiles show the best value of the period ("max");
+ * while a finger is on the chart they show that day's numbers, and the badge shows its date.
+ */
+function DayChart({ points, stats, width }: { points: SeriesPoint[]; stats: [Stat, Stat]; width: number }) {
+  const { t } = useTranslation();
+  const { colors, language } = useSettings();
+  const today = useToday();
+  const [touched, setTouched] = useState<number | null>(null);
+  const point = touched !== null ? points[touched] : undefined;
+
+  const lineColors = [colors.text, colors.textSecondary];
+  const scaled = (pick: Pick) => {
+    const max = Math.max(0, ...points.map((p) => p[pick]));
+    return points.map((p) => ({ value: max > 0 ? (p[pick] / max) * TOP : 0 }));
+  };
+  // The whole period fits the width, so a drag moves the pointer instead of scrolling.
+  const spacingX = points.length > 1 ? width / (points.length - 1) : width;
 
   return (
-    <View style={[styles.card, { backgroundColor: colors.surface }]}>
-      <Text style={[typography.body, { color: colors.text }]}>{title}</Text>
-      {points.length === 0 ? (
-        <Text style={[typography.caption, styles.noData, { color: colors.textSecondary }]}>{noData}</Text>
-      ) : (
+    <View style={styles.chartBlock}>
+      <View style={styles.tiles}>
+        {stats.map((s, i) => {
+          const value = point ? point[s.pick] : Math.max(0, ...points.map((p) => p[s.pick]));
+          return (
+            <View key={s.label} style={[styles.tile, { backgroundColor: colors.surface }]}>
+              <Text numberOfLines={1} adjustsFontSizeToFit style={[styles.tileValue, { color: colors.text }]}>
+                {s.format(value)}
+              </Text>
+              <View style={styles.tileCaption}>
+                <View style={[styles.badge, { backgroundColor: lineColors[i] }]}>
+                  <Text style={[styles.badgeText, { color: colors.background }]}>
+                    {point ? shortDayLabel(point.date, language, today) : t('progress.statMax')}
+                  </Text>
+                </View>
+                <Text numberOfLines={1} style={[styles.tileLabel, { color: colors.textSecondary }]}>
+                  {s.label}
+                </Text>
+              </View>
+            </View>
+          );
+        })}
+      </View>
+
+      <View>
         <LineChart
-          data={points.map((p, i) => ({
-            value: p[pick],
-            label: shouldLabel(i, points.length, every) ? shortDate(p.date) : '',
-            dataPointText: undefined,
-          }))}
+          data={scaled(stats[0].pick)}
+          data2={scaled(stats[1].pick)}
           width={width}
-          height={140}
-          stepHeight={35}
-          stepValue={scale.step}
+          height={CHART_HEIGHT}
+          maxValue={CEILING}
+          noOfSections={1}
           spacing={spacingX}
-          initialSpacing={24}
-          endSpacing={24}
-          color={colors.accent}
-          thickness={3}
-          dataPointsColor={colors.accent}
-          dataPointsRadius={4}
+          initialSpacing={0}
+          endSpacing={0}
+          disableScroll
+          curved
+          hideDataPoints
+          hideDataPoints2
+          hideAxesAndRules
+          hideYAxisText
+          yAxisLabelWidth={0}
+          xAxisLabelsHeight={0}
+          color={lineColors[0]}
+          color2={lineColors[1]}
+          thickness={2.5}
+          thickness2={2}
           areaChart
-          startFillColor={colors.accent}
-          startOpacity={0.14}
-          endFillColor={colors.accent}
-          endOpacity={0.01}
-          noOfSections={4}
-          maxValue={scale.max}
-          formatYLabel={(l) => formatNumber(Number(l))}
-          yAxisTextStyle={{ color: colors.textSecondary, fontSize: 10 }}
-          yAxisThickness={0}
-          xAxisThickness={0}
-          yAxisLabelWidth={36}
-          rulesColor={colors.background}
-          xAxisLabelTextStyle={{ color: colors.textSecondary, fontSize: 10, width: 40 }}
-          scrollToEnd
+          startFillColor={lineColors[0]}
+          endFillColor={lineColors[0]}
+          startOpacity={0.06}
+          endOpacity={0.06}
+          startOpacity2={0}
+          endOpacity2={0}
           isAnimated={false}
+          pointerConfig={{
+            pointerColor: lineColors[0],
+            pointer2Color: lineColors[1],
+            radius: 5,
+            pointerStripColor: colors.placeholder,
+            pointerStripWidth: 1,
+            pointerStripHeight: CHART_HEIGHT,
+            activatePointersInstantlyOnTouch: true,
+            pointerLabelComponent: () => null,
+          }}
+          getPointerProps={({ pointerIndex }: { pointerIndex: number }) =>
+            setTouched(pointerIndex >= 0 && pointerIndex < points.length ? pointerIndex : null)
+          }
         />
-      )}
+        <View style={styles.axisLabels}>
+          <Text style={[typography.caption, { color: colors.textSecondary }]}>
+            {monthYearLabel(points[0].date, language)}
+          </Text>
+          <Text style={[typography.caption, { color: colors.textSecondary }]}>
+            {monthYearLabel(points[points.length - 1].date, language)}
+          </Text>
+        </View>
+      </View>
     </View>
   );
 }
 
+/** One column per day, oldest on the left, scrolled to the newest; each set on its own line. */
+function HistoryColumns({ history }: { history: HistoryDay[] }) {
+  const { t } = useTranslation();
+  const { colors, language } = useSettings();
+  const today = useToday();
+  const units = { min: t('workout.unitMin'), km: t('workout.unitKm') };
+  const scroll = useRef<ScrollView>(null);
+
+  return (
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      contentContainerStyle={styles.columns}
+      ref={scroll}
+      onContentSizeChange={() => scroll.current?.scrollToEnd({ animated: false })}
+    >
+      {history.map((day) => (
+        <View key={day.date} style={styles.column}>
+          <Text style={[typography.body, styles.columnDate, { color: colors.textSecondary }]}>
+            {shortDayLabel(day.date, language, today)}
+          </Text>
+          {day.sets.map((s) => (
+            <Text key={s.id} style={[typography.body, { color: colors.text }]}>
+              {formatSetLine(s, units)}
+            </Text>
+          ))}
+        </View>
+      ))}
+    </ScrollView>
+  );
+}
+
 const styles = StyleSheet.create({
-  container: { padding: spacing.md, gap: spacing.md, paddingBottom: spacing.xl },
-  card: { borderRadius: radius.lg, padding: spacing.lg, gap: spacing.md, overflow: 'hidden' },
-  noData: { textAlign: 'center', paddingVertical: spacing.lg },
-  history: { gap: spacing.sm },
-  day: { borderRadius: radius.md, padding: spacing.md, gap: 4 },
+  container: { padding: spacing.md, gap: spacing.lg, paddingBottom: spacing.xl },
+  chartBlock: { gap: spacing.lg },
+  tiles: { flexDirection: 'row', gap: spacing.sm },
+  tile: { flex: 1, borderRadius: radius.lg, padding: spacing.md, gap: 4 },
+  tileValue: { fontSize: 34, fontWeight: '800' },
+  tileCaption: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  badge: { borderRadius: radius.full, paddingHorizontal: 7, paddingVertical: 2 },
+  badgeText: { fontSize: 12, fontWeight: '600' },
+  tileLabel: { flexShrink: 1, fontSize: 17, fontWeight: '500' },
+  axisLabels: { flexDirection: 'row', justifyContent: 'space-between', marginTop: spacing.xs },
+  historyBlock: { gap: spacing.sm },
+  columns: { gap: spacing.lg },
+  column: { gap: 6, minWidth: 64 },
+  columnDate: { marginBottom: 4 },
 });

@@ -1,10 +1,12 @@
 import * as Haptics from 'expo-haptics';
+import { router } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import ReanimatedSwipeable, { SwipeDirection } from 'react-native-gesture-handler/ReanimatedSwipeable';
 
 import { GroupIcon } from '@/components/group-icons';
-import { ChevronRightIcon, PlusIcon, TrashIcon } from '@/components/icons';
+import { ChartIcon, ChevronRightIcon, PlusIcon, TrashIcon } from '@/components/icons';
 import { GradientCard } from '@/components/ui';
 import { db } from '@/db/client';
 import type { workouts } from '@/db/schema';
@@ -87,10 +89,11 @@ function ExerciseItem({
 }) {
   const { t } = useTranslation();
   const colors = useColors();
+  const swipeRef = useRef<{ close: () => void } | null>(null);
 
   const remove = () =>
     Alert.alert(t('workout.removeExerciseConfirm', { name: item.name }), t('workout.removeExerciseMessage'), [
-      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('common.cancel'), style: 'cancel', onPress: () => swipeRef.current?.close() },
       {
         text: t('common.delete'),
         style: 'destructive',
@@ -98,29 +101,72 @@ function ExerciseItem({
       },
     ]);
 
+  const openStats = () =>
+    router.push({ pathname: '/progress/exercise/[id]', params: { id: String(item.exerciseId) } });
+
+  // Swipe left removes the exercise from the day (asking first only if sets were logged),
+  // swipe right opens its history.
+  const onSwipe = (direction: SwipeDirection) => {
+    if (direction === SwipeDirection.RIGHT) {
+      Haptics.selectionAsync();
+      swipeRef.current?.close();
+      openStats();
+    } else if (filledSets > 0) {
+      remove();
+    } else {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      removeWorkoutExercise(db, item.id);
+    }
+  };
+
   return (
     <View style={styles.card}>
-      <Pressable
-        onPress={onToggle}
-        accessibilityRole="button"
-        accessibilityState={{ expanded: open }}
-        style={[styles.header, { backgroundColor: colors.surface }]}
+      <ReanimatedSwipeable
+        ref={swipeRef as never}
+        friction={1.5}
+        leftThreshold={SWIPE_THRESHOLD}
+        rightThreshold={SWIPE_THRESHOLD}
+        onSwipeableOpen={onSwipe}
+        renderLeftActions={() => (
+          <View style={[styles.swipeAction, styles.swipeLeft, { backgroundColor: colors.accent }]}>
+            <ChartIcon color="#FFFFFF" />
+            <Text style={[typography.caption, styles.swipeText]}>{t('workout.stats')}</Text>
+          </View>
+        )}
+        renderRightActions={() => (
+          <View style={[styles.swipeAction, styles.swipeRight, { backgroundColor: colors.danger }]}>
+            <TrashIcon color="#FFFFFF" />
+            <Text style={[typography.caption, styles.swipeText]}>{t('common.delete')}</Text>
+          </View>
+        )}
       >
-        <GroupIcon name={item.groupIcon} color={colors.text} />
-        <View style={styles.headerText}>
-          <Text numberOfLines={1} style={[typography.body, { color: colors.text }]}>
-            {item.name}
-          </Text>
-          {filledSets > 0 && (
-            <Text style={[typography.caption, { color: colors.textSecondary }]}>
-              {t('workout.setsDone', { count: filledSets })}
+        <Pressable
+          onPress={onToggle}
+          accessibilityRole="button"
+          accessibilityState={{ expanded: open }}
+          accessibilityActions={[
+            { name: 'stats', label: t('workout.stats') },
+            { name: 'delete', label: t('workout.removeExercise') },
+          ]}
+          onAccessibilityAction={(e) => (e.nativeEvent.actionName === 'stats' ? openStats() : remove())}
+          style={[styles.header, { backgroundColor: colors.surface }]}
+        >
+          <GroupIcon name={item.groupIcon} color={colors.text} />
+          <View style={styles.headerText}>
+            <Text numberOfLines={1} style={[typography.body, { color: colors.text }]}>
+              {item.name}
             </Text>
-          )}
-        </View>
-        <View style={{ transform: [{ rotate: open ? '90deg' : '0deg' }] }}>
-          <ChevronRightIcon color={colors.textSecondary} />
-        </View>
-      </Pressable>
+            {filledSets > 0 && (
+              <Text style={[typography.caption, { color: colors.textSecondary }]}>
+                {t('workout.setsDone', { count: filledSets })}
+              </Text>
+            )}
+          </View>
+          <View style={{ transform: [{ rotate: open ? '90deg' : '0deg' }] }}>
+            <ChevronRightIcon color={colors.textSecondary} />
+          </View>
+        </Pressable>
+      </ReanimatedSwipeable>
       {open && <Sets item={item} date={date} onRemove={remove} />}
     </View>
   );
@@ -195,6 +241,9 @@ function Sets({ item, date, onRemove }: { item: Item; date: string; onRemove: ()
   );
 }
 
+const SWIPE_WIDTH = 96;
+const SWIPE_THRESHOLD = 72;
+
 const styles = StyleSheet.create({
   list: { gap: spacing.sm },
   centered: { textAlign: 'center' },
@@ -209,6 +258,16 @@ const styles = StyleSheet.create({
     minHeight: 60,
   },
   headerText: { flex: 1, gap: 2 },
+  swipeAction: {
+    width: SWIPE_WIDTH,
+    borderRadius: radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+  },
+  swipeLeft: { marginRight: 6 },
+  swipeRight: { marginLeft: 6 },
+  swipeText: { color: '#FFFFFF' },
   sets: { paddingBottom: spacing.xs },
   notes: { paddingHorizontal: spacing.xs, paddingBottom: spacing.xs },
   columns: { flexDirection: 'row', gap: 6 },

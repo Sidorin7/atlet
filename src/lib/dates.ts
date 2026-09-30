@@ -70,6 +70,10 @@ export const dayNumber = (iso: ISODate): number => Number(iso.slice(8, 10));
 
 export const shortMonth = (iso: ISODate, locale: string): string => fmt(iso, locale, { month: 'short' });
 
+/** e.g. 'Sep 2026', 'сент. 2026 г.' */
+export const monthYearLabel = (iso: ISODate, locale: string): string =>
+  fmt(iso, locale, { month: 'short', year: 'numeric' });
+
 export const dayMonthLabel = (iso: ISODate, locale: string): string =>
   fmt(iso, locale, { day: 'numeric', month: 'long' });
 
