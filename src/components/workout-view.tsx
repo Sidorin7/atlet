@@ -6,7 +6,7 @@ import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import ReanimatedSwipeable, { SwipeDirection } from 'react-native-gesture-handler/ReanimatedSwipeable';
 
 import { GroupIcon } from '@/components/group-icons';
-import { ChartIcon, ChevronRightIcon, PlusIcon, TrashIcon } from '@/components/icons';
+import { ChevronRightIcon, PlusIcon, StatsIcon, TrashIcon } from '@/components/icons';
 import { GradientCard } from '@/components/ui';
 import { db } from '@/db/client';
 import type { workouts } from '@/db/schema';
@@ -129,7 +129,7 @@ function ExerciseItem({
         onSwipeableOpen={onSwipe}
         renderLeftActions={() => (
           <View style={[styles.swipeAction, styles.swipeLeft, { backgroundColor: colors.accent }]}>
-            <ChartIcon color="#FFFFFF" />
+            <StatsIcon size={20} color="#FFFFFF" />
             <Text style={[typography.caption, styles.swipeText]}>{t('workout.stats')}</Text>
           </View>
         )}

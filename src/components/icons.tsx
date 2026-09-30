@@ -14,17 +14,6 @@ export function GearIcon({ size = 24, color }: IconProps) {
   );
 }
 
-export function HeartIcon({ size = 24, color }: IconProps) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2}>
-      <Path
-        strokeLinejoin="round"
-        d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z"
-      />
-    </Svg>
-  );
-}
-
 export function CheckIcon({ size = 20, color }: IconProps) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2.5}>
@@ -74,10 +63,11 @@ export function CloseIcon({ size = 18, color }: IconProps) {
   );
 }
 
-export function ChartIcon({ size = 20, color }: IconProps) {
+/** Bars with a rising trend: progress and stats. */
+export function StatsIcon({ size = 24, color }: IconProps) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2}>
-      <Path strokeLinecap="round" strokeLinejoin="round" d="M4 4v16h16M8 15l4-4 3 3 5-6" />
+      <Path strokeLinecap="round" strokeLinejoin="round" d="M5 20v-5M10 20v-8M15 20v-6M20 20V9M4 10l5-4 5 3 6-5M17 4h3v3" />
     </Svg>
   );
 }

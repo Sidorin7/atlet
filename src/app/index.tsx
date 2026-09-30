@@ -7,7 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { MonthGrid, WeekStrip } from '@/components/calendar';
 import { EmptyIllustration } from '@/components/empty-illustration';
-import { ChevronRightIcon, GearIcon, HeartIcon, MoreIcon, PlusIcon } from '@/components/icons';
+import { ChevronRightIcon, GearIcon, MoreIcon, PlusIcon, StatsIcon } from '@/components/icons';
 import { Button } from '@/components/ui';
 import { WorkoutView } from '@/components/workout-view';
 import { db } from '@/db/client';
@@ -121,7 +121,7 @@ export default function DayScreen() {
             accessibilityLabel={t('progress.title')}
             onPress={() => router.push('/progress')}
           >
-            <HeartIcon color={colors.text} />
+            <StatsIcon color={colors.text} />
           </Pressable>
           <Link href="/settings" asChild>
             <Pressable hitSlop={8} accessibilityRole="button" accessibilityLabel={t('settings.title')}>
