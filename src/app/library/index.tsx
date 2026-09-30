@@ -49,7 +49,9 @@ export default function LibraryHome() {
 
   return (
     <View style={styles.flex}>
-      <View style={styles.top}>
+      {/* The iOS form sheet sizes the list itself and only leaves room for a header it can see as one
+          view; without collapsable={false} this View is flattened away and the list covers the tabs. */}
+      <View style={styles.top} collapsable={false}>
         {date && (
           <Text style={[typography.caption, { color: colors.textSecondary }]}>
             {t('library.target', {
