@@ -104,34 +104,3 @@ export function exerciseHistory(
   }
   return [...byDay.entries()].sort(([a], [b]) => (a < b ? 1 : -1)).map(([date, sets]) => ({ date, sets }));
 }
-
-export type ExerciseSummary = {
-  exerciseId: number;
-  name: string;
-  groupIcon: string;
-  type: ExerciseType;
-  lastDate: ISODate;
-  sessions: number;
-};
-
-/** Every exercise that has at least one filled set, most recently trained first. */
-export function exerciseSummaries(rows: readonly ProgressRow[]): ExerciseSummary[] {
-  const map = new Map<number, ExerciseSummary & { days: Set<ISODate> }>();
-  for (const r of rows) {
-    const cur = map.get(r.exerciseId) ?? {
-      exerciseId: r.exerciseId,
-      name: r.name,
-      groupIcon: r.groupIcon,
-      type: r.type,
-      lastDate: r.date,
-      sessions: 0,
-      days: new Set<ISODate>(),
-    };
-    cur.days.add(r.date);
-    if (r.date > cur.lastDate) cur.lastDate = r.date;
-    map.set(r.exerciseId, cur);
-  }
-  return [...map.values()]
-    .map(({ days, ...s }) => ({ ...s, sessions: days.size }))
-    .sort((a, b) => (a.lastDate === b.lastDate ? a.name.localeCompare(b.name) : a.lastDate < b.lastDate ? 1 : -1));
-}

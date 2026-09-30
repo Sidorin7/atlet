@@ -4,13 +4,12 @@ import { useTranslation } from 'react-i18next';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { BarSeries, type Bar } from '@/components/bar-series';
-import { GroupIcon } from '@/components/group-icons';
-import { CloseButton, EmptyText, ListRow, SectionLabel, Segmented } from '@/components/ui';
+import { CloseButton, EmptyText, Segmented } from '@/components/ui';
 import { db } from '@/db/client';
 import { useLive } from '@/db/use-live';
-import { dayMonthLabel, dayNumber, shortMonth } from '@/lib/dates';
+import { dayNumber, shortMonth } from '@/lib/dates';
 import { useToday } from '@/lib/use-today';
-import { exerciseSummaries, periodBuckets, type Granularity } from '@/progress/aggregate';
+import { periodBuckets, type Granularity } from '@/progress/aggregate';
 import { formatVolume } from '@/progress/format';
 import { progressRows } from '@/progress/queries';
 import { useSettings } from '@/settings/provider';
@@ -20,13 +19,12 @@ const PERIODS = 12;
 
 export default function ProgressScreen() {
   const { t } = useTranslation();
-  const { colors, language } = useSettings();
+  const { language } = useSettings();
   const today = useToday();
   const rows = useLive(() => progressRows(db));
   const [g, setG] = useState<Granularity>('week');
 
   const buckets = useMemo(() => periodBuckets(rows, g, today, PERIODS), [rows, g, today]);
-  const summaries = useMemo(() => exerciseSummaries(rows), [rows]);
   const current = buckets[buckets.length - 1];
 
   const label = (start: string) => (g === 'week' ? String(dayNumber(start)) : shortMonth(start, language));
@@ -89,21 +87,6 @@ export default function ProgressScreen() {
         <BarSeries bars={bars((i) => buckets[i].workouts)} max={workoutsMax} height={80} />
       </ChartCard>
 
-      <SectionLabel>{t('progress.exercises')}</SectionLabel>
-      <View style={styles.list}>
-        {summaries.map((s) => (
-          <ListRow
-            key={s.exerciseId}
-            left={<GroupIcon name={s.groupIcon} color={colors.text} />}
-            title={s.name}
-            subtitle={`${t('progress.sessions', { count: s.sessions })} · ${dayMonthLabel(s.lastDate, language)}`}
-            chevron
-            onPress={() =>
-              router.push({ pathname: '/progress/exercise/[id]', params: { id: String(s.exerciseId) } })
-            }
-          />
-        ))}
-      </View>
     </ScrollView>
   );
 }
@@ -137,5 +120,4 @@ const styles = StyleSheet.create({
   stats: { flexDirection: 'row', gap: spacing.sm },
   stat: { flex: 1, borderRadius: radius.lg, padding: spacing.md, gap: 4 },
   card: { borderRadius: radius.lg, padding: spacing.lg, gap: spacing.md, overflow: 'hidden' },
-  list: { gap: spacing.sm },
 });

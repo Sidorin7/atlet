@@ -1,7 +1,6 @@
 import {
   exerciseHistory,
   exerciseSeries,
-  exerciseSummaries,
   periodBuckets,
   rangeStart,
   volumeOf,
@@ -143,20 +142,5 @@ describe('exerciseHistory', () => {
   it('leaves out days before the start of the range', () => {
     const rows = [row({ date: '2026-09-20' }), row({ date: '2026-09-25' })];
     expect(exerciseHistory(rows, 1, '2026-09-23').map((d) => d.date)).toEqual(['2026-09-25']);
-  });
-});
-
-describe('exerciseSummaries', () => {
-  it('lists each exercise once with its last day and number of sessions, newest first', () => {
-    const rows = [
-      row({ exerciseId: 1, name: 'Жим', date: '2026-09-10' }),
-      row({ exerciseId: 1, name: 'Жим', date: '2026-09-10' }),
-      row({ exerciseId: 1, name: 'Жим', date: '2026-09-20' }),
-      row({ exerciseId: 2, name: 'Тяга', date: '2026-09-25' }),
-    ];
-    expect(exerciseSummaries(rows).map((s) => [s.name, s.lastDate, s.sessions])).toEqual([
-      ['Тяга', '2026-09-25', 1],
-      ['Жим', '2026-09-20', 2],
-    ]);
   });
 });
