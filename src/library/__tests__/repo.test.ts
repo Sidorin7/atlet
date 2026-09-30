@@ -176,9 +176,11 @@ describe('seedDefaults', () => {
 
   it('does not recreate groups the user deleted', () => {
     seedDefaults(db, 'ru');
+    db.delete(exercises).run(); // the starter exercises go first, as in the app
     db.delete(muscleGroups).run();
     seedDefaults(db, 'ru');
     expect(db.select().from(muscleGroups).all()).toHaveLength(0);
+    expect(db.select().from(exercises).all()).toHaveLength(0);
   });
 
   it('is atomic: if marking as seeded fails, the groups are rolled back too', () => {
