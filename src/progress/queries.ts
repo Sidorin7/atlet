@@ -12,6 +12,8 @@ export const progressRows = (db: Reader) =>
       date: workouts.date,
       exerciseId: exercises.id,
       name: exercises.name,
+      groupId: muscleGroups.id,
+      groupName: muscleGroups.name,
       groupIcon: muscleGroups.icon,
       type: exercises.type,
       weightKg: sets.weightKg,
@@ -26,3 +28,10 @@ export const progressRows = (db: Reader) =>
     .innerJoin(muscleGroups, eq(muscleGroups.id, exercises.groupId))
     .where(filled)
     .orderBy(asc(workouts.date), asc(workoutExercises.position), asc(sets.position), asc(sets.id));
+
+/** Every muscle group in the user's order, trained or not. */
+export const allGroups = (db: Reader) =>
+  db
+    .select({ id: muscleGroups.id, name: muscleGroups.name, icon: muscleGroups.icon })
+    .from(muscleGroups)
+    .orderBy(asc(muscleGroups.position));

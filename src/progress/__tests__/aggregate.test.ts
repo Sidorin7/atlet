@@ -1,7 +1,14 @@
 import {
   exerciseHistory,
+  exerciseTrends,
+  groupBalance,
+  heatmapWeeks,
+  recentRecords,
+  setScore,
+  trainingDays,
+  weekStreak,
+  workoutsInLast,
   exerciseSeries,
-  periodBuckets,
   rangeStart,
   volumeOf,
   type ProgressRow,
@@ -13,6 +20,8 @@ const row = (over: Partial<ProgressRow>): ProgressRow => ({
   date: '2026-09-29',
   exerciseId: 1,
   name: 'Жим',
+  groupId: 1,
+  groupName: 'Грудь',
   groupIcon: 'chest',
   type: 'weight',
   weightKg: 60,
@@ -35,45 +44,6 @@ describe('volumeOf', () => {
   it('does not count bodyweight or cardio as tonnage', () => {
     expect(volumeOf(row({ type: 'bodyweight', weightKg: 10, reps: 8 }))).toBe(0);
     expect(volumeOf(row({ type: 'cardio', weightKg: null, reps: null, durationSec: 600 }))).toBe(0);
-  });
-});
-
-describe('periodBuckets', () => {
-  const today = '2026-09-30';
-  it('returns the last N weeks ending with this one, oldest first, zeros included', () => {
-    const buckets = periodBuckets([row({ date: '2026-09-15' })], 'week', today, 3);
-    expect(buckets.map((b) => b.start)).toEqual(['2026-09-14', '2026-09-21', '2026-09-28']);
-    expect(buckets.map((b) => b.volume)).toEqual([480, 0, 0]);
-  });
-
-  it('sums a week and counts distinct workout days, not sets', () => {
-    const rows = [
-      row({ date: '2026-09-28' }),
-      row({ date: '2026-09-28', weightKg: 70, reps: 5 }),
-      row({ date: '2026-09-30', weightKg: 20, reps: 10 }),
-    ];
-    const [thisWeek] = periodBuckets(rows, 'week', today, 1);
-    expect(thisWeek).toEqual({ start: '2026-09-28', volume: 480 + 350 + 200, workouts: 2 });
-  });
-
-  it('counts a bodyweight-only day as a workout with no tonnage', () => {
-    const [b] = periodBuckets([row({ type: 'bodyweight', reps: 12, weightKg: null })], 'week', today, 1);
-    expect(b.workouts).toBe(1);
-    expect(b.volume).toBe(0);
-  });
-
-  it('buckets by calendar month', () => {
-    const rows = [row({ date: '2026-08-31' }), row({ date: '2026-09-01' }), row({ date: '2026-09-30' })];
-    const buckets = periodBuckets(rows, 'month', today, 2);
-    expect(buckets.map((b) => [b.start, b.workouts])).toEqual([
-      ['2026-08-01', 1],
-      ['2026-09-01', 2],
-    ]);
-  });
-
-  it('ignores rows outside the window', () => {
-    const buckets = periodBuckets([row({ date: '2026-01-05' }), row({ date: '2026-10-20' })], 'week', today, 4);
-    expect(buckets.every((b) => b.volume === 0 && b.workouts === 0)).toBe(true);
   });
 });
 
@@ -142,5 +112,92 @@ describe('exerciseHistory', () => {
   it('leaves out days before the start of the range', () => {
     const rows = [row({ date: '2026-09-20' }), row({ date: '2026-09-25' })];
     expect(exerciseHistory(rows, 1, '2026-09-23').map((d) => d.date)).toEqual(['2026-09-25']);
+  });
+});
+
+describe('setScore', () => {
+  it('weights: estimated 1RM, a single counts as is', () => {
+    expect(setScore(row({ weightKg: 90, reps: 5 }))).toBe(105);
+    expect(setScore(row({ weightKg: 100, reps: 1 }))).toBe(100);
+    expect(setScore(row({ weightKg: 0, reps: 5 }))).toBeNull();
+  });
+  it('bodyweight: reps; cardio: distance or time', () => {
+    expect(setScore(row({ type: 'bodyweight', weightKg: 10, reps: 12 }))).toBe(12);
+    const run = row({ type: 'cardio', weightKg: null, reps: null, durationSec: 1500, distanceM: 5000 });
+    expect(setScore(run, 'distance')).toBe(5000);
+    expect(setScore(run, 'time')).toBe(1500);
+  });
+});
+
+describe('consistency', () => {
+  const today = '2026-09-30'; // Wednesday
+  it('keeps the streak when this week has no workout yet', () => {
+    const days = trainingDays([row({ date: '2026-09-22' }), row({ date: '2026-09-15' }), row({ date: '2026-09-01' })]);
+    expect(weekStreak(days, today)).toBe(2);
+    expect(weekStreak(new Set(['2026-09-29', ...days]), today)).toBe(3);
+    expect(weekStreak(new Set(['2026-09-08']), today)).toBe(0);
+  });
+  it('counts workout days in the last n days, today included', () => {
+    const days = new Set(['2026-09-30', '2026-09-01', '2026-08-31', '2026-10-01']);
+    expect(workoutsInLast(days, today, 30)).toBe(2);
+  });
+  it('lays out whole weeks, Monday first, marking trained and future days', () => {
+    const weeks = heatmapWeeks(new Set(['2026-09-29']), today, 2);
+    expect(weeks.map((w) => w[0].date)).toEqual(['2026-09-21', '2026-09-28']);
+    expect(weeks[1][1]).toEqual({ date: '2026-09-29', trained: true, future: false });
+    expect(weeks[1][3].future).toBe(true);
+  });
+});
+
+describe('recentRecords', () => {
+  it('reports days that beat every earlier day, not the first day, newest first', () => {
+    const rows = [
+      row({ date: '2026-09-01', weightKg: 80, reps: 5 }),
+      row({ date: '2026-09-08', weightKg: 75, reps: 5 }),
+      row({ date: '2026-09-15', weightKg: 82.5, reps: 5 }),
+      row({ date: '2026-09-15', weightKg: 60, reps: 10 }),
+      row({ date: '2026-09-22', weightKg: 85, reps: 5 }),
+      row({ exerciseId: 2, date: '2026-09-20', type: 'bodyweight', weightKg: null, reps: 10 }),
+    ];
+    const records = recentRecords(rows, 5);
+    expect(records.map((r) => [r.date, r.row.weightKg, r.previous.weightKg])).toEqual([
+      ['2026-09-22', 85, 82.5],
+      ['2026-09-15', 82.5, 80],
+    ]);
+    expect(recentRecords(rows, 1)).toHaveLength(1);
+  });
+});
+
+describe('groupBalance', () => {
+  const groups = [
+    { id: 1, name: 'Грудь', icon: 'chest' },
+    { id: 2, name: 'Спина', icon: 'back' },
+  ];
+  it('counts sets since the start and keeps untrained groups', () => {
+    const rows = [row({ date: '2026-09-10' }), row({ date: '2026-09-28' }), row({ date: '2026-09-29' })];
+    expect(groupBalance(rows, groups, '2026-09-28')).toEqual([
+      { group: groups[0], sets: 2, lastDate: '2026-09-29' },
+      { group: groups[1], sets: 0, lastDate: null },
+    ]);
+  });
+});
+
+describe('exerciseTrends', () => {
+  const today = '2026-09-30';
+  it('compares the best of the last 4 weeks with the 4 weeks before', () => {
+    const rows = [row({ date: '2026-08-20', weightKg: 100, reps: 1 }), row({ date: '2026-09-20', weightKg: 106, reps: 1 })];
+    const [t] = exerciseTrends(rows, today);
+    expect(t).toMatchObject({ exerciseId: 1, change: 6, lastDate: '2026-09-20' });
+    expect(t.best.weightKg).toBe(106);
+  });
+  it('is new with nothing before, and unknown when not trained lately', () => {
+    expect(exerciseTrends([row({ date: '2026-09-20' })], today)[0].change).toBe('new');
+    const old = exerciseTrends([row({ date: '2026-06-01', weightKg: 70 })], today)[0];
+    expect(old.change).toBeNull();
+    expect(old.best.weightKg).toBe(70);
+  });
+  it('lists the most recently trained first', () => {
+    const rows = [row({ exerciseId: 1, date: '2026-09-01' }), row({ exerciseId: 2, name: 'Тяга', date: '2026-09-25' })];
+    expect(exerciseTrends(rows, today).map((t) => t.exerciseId)).toEqual([2, 1]);
   });
 });

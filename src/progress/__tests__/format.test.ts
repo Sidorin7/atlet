@@ -1,4 +1,4 @@
-import { formatSetLine, formatVolume } from '../format';
+import { formatChange, formatScore, formatSetLine, formatVolume } from '../format';
 import type { ProgressRow } from '../aggregate';
 
 const row = (over: Partial<ProgressRow>): ProgressRow => ({
@@ -6,6 +6,8 @@ const row = (over: Partial<ProgressRow>): ProgressRow => ({
   date: '2026-09-29',
   exerciseId: 1,
   name: 'X',
+  groupId: 1,
+  groupName: 'Грудь',
   groupIcon: 'chest',
   type: 'weight',
   weightKg: null,
@@ -45,5 +47,24 @@ describe('formatSetLine', () => {
   });
   it('falls back to the reps alone when only reps are known for a weight exercise', () => {
     expect(formatSetLine(row({ reps: 8 }), units)).toBe('8');
+  });
+});
+
+describe('formatScore', () => {
+  const u = { ...units, kg: 'кг' };
+  it('adds the estimated max to a weight set with more than one rep', () => {
+    expect(formatScore(row({ weightKg: 80, reps: 5 }), u)).toBe('80 × 5 · ≈93 кг');
+    expect(formatScore(row({ weightKg: 100, reps: 1 }), u)).toBe('100 × 1');
+  });
+  it('shows other sets as they are', () => {
+    expect(formatScore(row({ type: 'bodyweight', reps: 12 }), u)).toBe('12');
+  });
+});
+
+describe('formatChange', () => {
+  it('signs the percent, and shows = for no change', () => {
+    expect(formatChange(6)).toBe('+6\u00A0%');
+    expect(formatChange(-3)).toBe('−3\u00A0%');
+    expect(formatChange(0)).toBe('=');
   });
 });

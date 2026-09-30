@@ -1,6 +1,6 @@
 import { formatNumber } from '@/workouts/numbers';
 
-import type { ProgressRow } from './aggregate';
+import { oneRepMax, type ProgressRow } from './aggregate';
 
 /** 12345 → "12 345" (non-breaking spaces, so numbers never wrap). */
 export function formatVolume(n: number): string {
@@ -21,3 +21,14 @@ export function formatSetLine(r: ProgressRow, units: { min: string; km: string }
   if (!showLoad || reps === '') return showLoad ? formatNumber(load) : reps;
   return `${formatNumber(load, { plus: r.type === 'bodyweight' })} × ${reps}`;
 }
+
+/** A set with its estimated max for weights: "80 × 5 · ≈93 кг"; other sets as `formatSetLine`. */
+export function formatScore(r: ProgressRow, units: { min: string; km: string; kg: string }): string {
+  const line = formatSetLine(r, units);
+  if (r.type !== 'weight' || r.weightKg === null || r.reps === null || r.reps <= 1 || r.weightKg <= 0) return line;
+  return `${line} · ≈${Math.round(oneRepMax(r.weightKg, r.reps))} ${units.kg}`;
+}
+
+/** Percent change: "+6 %", "−3 %", or "=" when it rounds to zero. */
+export const formatChange = (percent: number): string =>
+  percent === 0 ? '=' : `${percent > 0 ? '+' : '−'}${Math.abs(percent)}\u00A0%`;

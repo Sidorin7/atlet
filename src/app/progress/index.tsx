@@ -1,46 +1,41 @@
 import { router, Stack } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
-import { BarSeries, type Bar } from '@/components/bar-series';
-import { CloseButton, EmptyText, Segmented } from '@/components/ui';
+import { GroupIcon } from '@/components/group-icons';
+import { CloseButton, EmptyText, ListRow, Segmented } from '@/components/ui';
 import { db } from '@/db/client';
 import { useLive } from '@/db/use-live';
-import { dayNumber, shortMonth } from '@/lib/dates';
+import { diffDays, shortDayLabel, startOfMonth, startOfWeek } from '@/lib/dates';
 import { useToday } from '@/lib/use-today';
-import { periodBuckets, type Granularity } from '@/progress/aggregate';
-import { formatVolume } from '@/progress/format';
-import { progressRows } from '@/progress/queries';
+import {
+  exerciseTrends,
+  groupBalance,
+  heatmapWeeks,
+  recentRecords,
+  trainingDays,
+  weekStreak,
+  workoutsInLast,
+  type ProgressRow,
+} from '@/progress/aggregate';
+import { formatChange, formatScore, formatSetLine } from '@/progress/format';
+import { allGroups, progressRows } from '@/progress/queries';
 import { useSettings } from '@/settings/provider';
 import { radius, spacing, typography } from '@/theme/tokens';
 
-const PERIODS = 12;
+const HEATMAP_WEEKS = 16;
+const RECORDS = 5;
+const CELL_GAP = 3;
 
 export default function ProgressScreen() {
   const { t } = useTranslation();
-  const { language } = useSettings();
-  const today = useToday();
   const rows = useLive(() => progressRows(db));
-  const [g, setG] = useState<Granularity>('week');
-
-  const buckets = useMemo(() => periodBuckets(rows, g, today, PERIODS), [rows, g, today]);
-  const current = buckets[buckets.length - 1];
-
-  const label = (start: string) => (g === 'week' ? String(dayNumber(start)) : shortMonth(start, language));
-  const bars = (value: (i: number) => number): Bar[] =>
-    buckets.map((b, i) => ({ value: value(i), label: label(b.start), highlight: i === buckets.length - 1 }));
-
-  // No value axis is drawn, so the tallest bar simply fills the height.
-  const volumeMax = Math.max(1, ...buckets.map((b) => b.volume));
-  const workoutsMax = Math.max(1, ...buckets.map((b) => b.workouts));
 
   const close = (
     <Stack.Screen
       options={{
-        headerRight: () => (
-          <CloseButton label={t('common.close')} onPress={() => router.dismissTo('/')} />
-        ),
+        headerRight: () => <CloseButton label={t('common.close')} onPress={() => router.dismissTo('/')} />,
       }}
     />
   );
@@ -57,67 +52,214 @@ export default function ProgressScreen() {
   return (
     <ScrollView contentContainerStyle={styles.container}>
       {close}
-      <Segmented
-        value={g}
-        onChange={setG}
-        options={[
-          { value: 'week', label: t('progress.weeks') },
-          { value: 'month', label: t('progress.months') },
-        ]}
-      />
-
-      <View style={styles.stats}>
-        <Stat
-          title={t('progress.workouts')}
-          value={String(current.workouts)}
-          caption={g === 'week' ? t('progress.thisWeek') : t('progress.thisMonth')}
-        />
-        <Stat
-          title={t('progress.volume')}
-          value={`${formatVolume(current.volume)} ${t('progress.volumeUnit')}`}
-          caption={g === 'week' ? t('progress.thisWeek') : t('progress.thisMonth')}
-        />
-      </View>
-
-      <ChartCard title={t('progress.volume')}>
-        <BarSeries bars={bars((i) => buckets[i].volume)} max={volumeMax} height={130} />
-      </ChartCard>
-
-      <ChartCard title={t('progress.workouts')}>
-        <BarSeries bars={bars((i) => buckets[i].workouts)} max={workoutsMax} height={80} />
-      </ChartCard>
-
+      <Consistency rows={rows} />
+      <Records rows={rows} />
+      <Balance rows={rows} />
+      <Trends rows={rows} />
     </ScrollView>
   );
 }
 
-function Stat({ title, value, caption }: { title: string; value: string; caption: string }) {
+function Section({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }) {
   const { colors } = useSettings();
   return (
-    <View style={[styles.stat, { backgroundColor: colors.surface }]}>
-      <Text style={[typography.caption, { color: colors.textSecondary }]}>{title}</Text>
-      <Text style={[typography.title, { color: colors.text }]} numberOfLines={1} adjustsFontSizeToFit>
-        {value}
-      </Text>
-      <Text style={[typography.caption, { color: colors.textSecondary }]}>{caption}</Text>
-    </View>
-  );
-}
-
-function ChartCard({ title, children }: { title: string; children: React.ReactNode }) {
-  const { colors } = useSettings();
-  return (
-    <View style={[styles.card, { backgroundColor: colors.surface }]}>
-      <Text style={[typography.body, { color: colors.text }]}>{title}</Text>
+    <View style={styles.section}>
+      <Text style={[typography.title, { color: colors.text }]}>{title}</Text>
+      {hint && <Text style={[typography.caption, { color: colors.textSecondary }]}>{hint}</Text>}
       {children}
     </View>
   );
 }
 
+const useUnits = () => {
+  const { t } = useTranslation();
+  return { min: t('workout.unitMin'), km: t('workout.unitKm'), kg: t('workout.unitKg') };
+};
+
+/** Training days of the last 16 weeks as a grid (a column per week, Monday on top), plus two numbers. */
+function Consistency({ rows }: { rows: ProgressRow[] }) {
+  const { t } = useTranslation();
+  const { colors } = useSettings();
+  const { width } = useWindowDimensions();
+  const today = useToday();
+  const days = useMemo(() => trainingDays(rows), [rows]);
+  const weeks = useMemo(() => heatmapWeeks(days, today, HEATMAP_WEEKS), [days, today]);
+  const streak = weekStreak(days, today);
+  const last30 = workoutsInLast(days, today, 30);
+
+  const inner = width - spacing.md * 4;
+  const cell = Math.floor((inner - CELL_GAP * (HEATMAP_WEEKS - 1)) / HEATMAP_WEEKS);
+
+  return (
+    <Section title={t('progress.consistency')}>
+      <View style={[styles.card, { backgroundColor: colors.surface }]}>
+        <View style={styles.grid}>
+          {weeks.map((week) => (
+            <View key={week[0].date} style={styles.gridColumn}>
+              {week.map((d) => (
+                <View
+                  key={d.date}
+                  style={[
+                    { width: cell, height: cell, borderRadius: cell / 4 },
+                    { backgroundColor: d.trained ? colors.text : colors.background, opacity: d.future ? 0.35 : 1 },
+                    d.date === today && { borderWidth: 1.5, borderColor: colors.textSecondary },
+                  ]}
+                />
+              ))}
+            </View>
+          ))}
+        </View>
+        <View style={styles.figures}>
+          <Text style={[typography.body, styles.figure, { color: colors.text }]}>
+            {t('progress.weekStreak', { count: streak })}
+          </Text>
+          <Text style={[typography.body, styles.figure, { color: colors.textSecondary }]}>
+            {t('progress.last30', { count: last30 })}
+          </Text>
+        </View>
+      </View>
+    </Section>
+  );
+}
+
+function Records({ rows }: { rows: ProgressRow[] }) {
+  const { t } = useTranslation();
+  const { colors, language } = useSettings();
+  const today = useToday();
+  const units = useUnits();
+  const records = useMemo(() => recentRecords(rows, RECORDS), [rows]);
+
+  return (
+    <Section title={t('progress.records')}>
+      {records.length === 0 && (
+        <Text style={[typography.body, { color: colors.textSecondary }]}>{t('progress.noRecords')}</Text>
+      )}
+      <View style={styles.list}>
+        {records.map((r) => (
+          <ListRow
+            key={r.row.id}
+            left={<GroupIcon name={r.row.groupIcon} color={colors.text} />}
+            title={r.row.name}
+            subtitle={`${shortDayLabel(r.date, language, today)} · ${t('progress.was', { value: formatScore(r.previous, units) })}`}
+            right={<Text style={[typography.body, { color: colors.text }]}>{formatSetLine(r.row, units)}</Text>}
+            onPress={() => openExercise(r.row.exerciseId)}
+          />
+        ))}
+      </View>
+    </Section>
+  );
+}
+
+type Period = 'week' | 'month';
+
+/** Sets per muscle group this week or month, and how long since each group was trained. */
+function Balance({ rows }: { rows: ProgressRow[] }) {
+  const { t } = useTranslation();
+  const { colors } = useSettings();
+  const today = useToday();
+  const [period, setPeriod] = useState<Period>('week');
+  const groups = useLive(() => allGroups(db));
+  const from = period === 'week' ? startOfWeek(today) : startOfMonth(today);
+  const loads = useMemo(() => groupBalance(rows, groups, from), [rows, groups, from]);
+  const max = Math.max(1, ...loads.map((l) => l.sets));
+
+  const since = (date: string | null) => {
+    if (date === null) return t('progress.never');
+    const n = diffDays(today, date);
+    return n <= 0 ? t('progress.todayShort') : t('progress.daysAgo', { count: n });
+  };
+
+  return (
+    <Section title={t('progress.balance')}>
+      <Segmented
+        value={period}
+        onChange={setPeriod}
+        options={[
+          { value: 'week', label: t('progress.range1w') },
+          { value: 'month', label: t('progress.range1m') },
+        ]}
+      />
+      <View style={[styles.card, styles.balance, { backgroundColor: colors.surface }]}>
+        {loads.map(({ group, sets, lastDate }) => (
+          <View key={group.id} style={styles.balanceRow}>
+            <GroupIcon name={group.icon} size={22} color={sets > 0 ? colors.text : colors.textSecondary} />
+            <View style={styles.balanceMain}>
+              <View style={styles.balanceLine}>
+                <Text numberOfLines={1} style={[typography.body, styles.balanceName, { color: colors.text }]}>
+                  {group.name}
+                </Text>
+                <Text style={[typography.caption, { color: colors.text }]}>
+                  {t('progress.setsCount', { count: sets })}
+                </Text>
+              </View>
+              <View style={[styles.track, { backgroundColor: colors.background }]}>
+                {sets > 0 && (
+                  <View style={[styles.fill, { width: `${(sets / max) * 100}%`, backgroundColor: colors.text }]} />
+                )}
+              </View>
+              <Text style={[typography.caption, { color: colors.textSecondary }]}>{since(lastDate)}</Text>
+            </View>
+          </View>
+        ))}
+      </View>
+    </Section>
+  );
+}
+
+/** Every exercise with its best recent set and the change against the 4 weeks before. */
+function Trends({ rows }: { rows: ProgressRow[] }) {
+  const { t } = useTranslation();
+  const { colors } = useSettings();
+  const today = useToday();
+  const units = useUnits();
+  const trends = useMemo(() => exerciseTrends(rows, today), [rows, today]);
+
+  return (
+    <Section title={t('progress.trends')} hint={t('progress.trendHint')}>
+      <View style={styles.list}>
+        {trends.map((tr) => {
+          const label =
+            tr.change === null ? '' : tr.change === 'new' ? t('progress.trendNew') : formatChange(tr.change);
+          const strong = typeof tr.change === 'number' && tr.change !== 0;
+          return (
+            <ListRow
+              key={tr.exerciseId}
+              left={<GroupIcon name={tr.groupIcon} color={tr.change === null ? colors.textSecondary : colors.text} />}
+              title={tr.name}
+              subtitle={formatScore(tr.best, units)}
+              right={
+                label ? (
+                  <Text style={[typography.body, { color: strong ? colors.text : colors.textSecondary }]}>{label}</Text>
+                ) : undefined
+              }
+              chevron
+              onPress={() => openExercise(tr.exerciseId)}
+            />
+          );
+        })}
+      </View>
+    </Section>
+  );
+}
+
+const openExercise = (id: number) =>
+  router.push({ pathname: '/progress/exercise/[id]', params: { id: String(id) } });
+
 const styles = StyleSheet.create({
-  container: { padding: spacing.md, gap: spacing.md, paddingBottom: spacing.xl },
+  container: { padding: spacing.md, gap: spacing.xl, paddingBottom: spacing.xl },
   emptyWrap: { flex: 1, padding: spacing.lg, justifyContent: 'center' },
-  stats: { flexDirection: 'row', gap: spacing.sm },
-  stat: { flex: 1, borderRadius: radius.lg, padding: spacing.md, gap: 4 },
-  card: { borderRadius: radius.lg, padding: spacing.lg, gap: spacing.md, overflow: 'hidden' },
+  section: { gap: spacing.sm },
+  card: { borderRadius: radius.lg, padding: spacing.md, gap: spacing.md },
+  grid: { flexDirection: 'row', justifyContent: 'space-between' },
+  gridColumn: { gap: CELL_GAP },
+  figures: { gap: 2 },
+  figure: { fontWeight: '600' },
+  list: { gap: spacing.sm },
+  balance: { gap: spacing.md },
+  balanceRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
+  balanceMain: { flex: 1, gap: 4 },
+  balanceLine: { flexDirection: 'row', alignItems: 'baseline', gap: spacing.sm },
+  balanceName: { flex: 1 },
+  track: { height: 6, borderRadius: 3, overflow: 'hidden' },
+  fill: { height: 6, borderRadius: 3 },
 });
