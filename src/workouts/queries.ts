@@ -47,6 +47,27 @@ export const lastDoneDate = (db: Reader, today: ISODate) =>
     .innerJoin(sets, eq(sets.workoutExerciseId, workoutExercises.id))
     .where(and(lte(workouts.date, today), filled));
 
+/** The latest workout on or before `today` that has a filled set. */
+export const lastDoneWorkout = (db: Reader, today: ISODate) =>
+  db
+    .select({ id: workouts.id, date: workouts.date, name: workouts.name })
+    .from(workouts)
+    .innerJoin(workoutExercises, eq(workoutExercises.workoutId, workouts.id))
+    .innerJoin(sets, eq(sets.workoutExerciseId, workoutExercises.id))
+    .where(and(lte(workouts.date, today), filled))
+    .orderBy(desc(workouts.date), desc(workouts.id))
+    .limit(1);
+
+/** Every day that has a workout with a filled set. */
+export const doneDates = (db: Reader) =>
+  db
+    .select({ date: workouts.date })
+    .from(workouts)
+    .innerJoin(workoutExercises, eq(workoutExercises.workoutId, workouts.id))
+    .innerJoin(sets, eq(sets.workoutExerciseId, workoutExercises.id))
+    .where(filled)
+    .groupBy(workouts.date);
+
 /** How many workouts have at least one filled set, and the date of the first of them. */
 export const doneWorkoutStats = (db: Reader) =>
   db

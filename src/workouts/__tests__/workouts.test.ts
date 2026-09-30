@@ -5,8 +5,16 @@ import { createTestDb } from '@/db/test-db';
 import type { AnyDb } from '@/db/types';
 import { createExercise, createGroup, createProgram, updateProgram } from '@/library/repo';
 
-import { addExerciseToDate, addProgramToDate, removeWorkout } from '../repo';
-import { daysSinceLastWorkout, doneWorkoutStats, workoutExercisesOf, workoutMarks, workoutOnDate } from '../queries';
+import { addExerciseToDate, addProgramToDate, removeWorkout, repeatWorkout } from '../repo';
+import {
+  daysSinceLastWorkout,
+  doneDates,
+  doneWorkoutStats,
+  lastDoneWorkout,
+  workoutExercisesOf,
+  workoutMarks,
+  workoutOnDate,
+} from '../queries';
 
 let db: AnyDb;
 let ids: number[];
@@ -157,5 +165,57 @@ describe('removeWorkout', () => {
     expect(db.select().from(workouts).all()).toHaveLength(0);
     expect(db.select().from(workoutExercises).all()).toHaveLength(0);
     expect(db.select().from(sets).all()).toHaveLength(0);
+  });
+});
+
+describe('lastDoneWorkout and doneDates', () => {
+  const done = (date: string, exerciseId = ids[0]) => {
+    const w = addExerciseToDate(db, date, exerciseId, 'Т');
+    const we = db.select().from(workoutExercises).where(eq(workoutExercises.workoutId, w)).all().at(-1)!;
+    db.insert(sets).values({ workoutExerciseId: we.id, position: 1, weightKg: 50, reps: 5 }).run();
+    return w;
+  };
+
+  it('finds the latest done workout on or before today, ignoring planned ones', () => {
+    done('2026-09-20');
+    const last = done('2026-09-25');
+    addExerciseToDate(db, '2026-09-27', ids[0], 'Т'); // planned only
+    done('2026-10-05'); // future
+    expect(lastDoneWorkout(db, '2026-09-29').all()).toEqual([{ id: last, date: '2026-09-25', name: 'Т' }]);
+  });
+
+  it('lists each done day once', () => {
+    done('2026-09-20');
+    done('2026-09-20', ids[1]);
+    done('2026-09-25');
+    addExerciseToDate(db, '2026-09-27', ids[0], 'Т');
+    expect(doneDates(db).all().map((r) => r.date).sort()).toEqual(['2026-09-20', '2026-09-25']);
+  });
+});
+
+describe('repeatWorkout', () => {
+  it('copies the exercises in order with the same name and colour, sets empty', () => {
+    const p = createProgram(db, { name: 'Push', color: 'coral', exerciseIds: [ids[2], ids[0]] });
+    const source = addProgramToDate(db, '2026-09-20', p);
+    const [first] = db.select().from(workoutExercises).where(eq(workoutExercises.workoutId, source)).all();
+    db.update(sets).set({ weightKg: 60, reps: 8 }).where(eq(sets.workoutExerciseId, first.id)).run();
+
+    const w = repeatWorkout(db, source, '2026-09-29');
+    expect(w).not.toBe(source);
+    expect(workoutOnDate(db, '2026-09-29').all()[0]).toMatchObject({ name: 'Push', color: 'coral', programId: p });
+    expect(namesOf(w)).toEqual(['Брусья', 'Жим']);
+    const copied = workoutExercisesOf(db, w).all().map((we) => we.id);
+    const copiedSets = db.select().from(sets).all().filter((s) => copied.includes(s.workoutExerciseId));
+    expect(copiedSets.map((s) => [s.weightKg, s.reps])).toEqual([
+      [null, null],
+      [null, null],
+    ]);
+  });
+
+  it('appends to a workout that already exists on that day', () => {
+    const source = addExerciseToDate(db, '2026-09-20', ids[1], 'Т');
+    const today = addExerciseToDate(db, '2026-09-29', ids[0], 'Сегодня');
+    expect(repeatWorkout(db, source, '2026-09-29')).toBe(today);
+    expect(namesOf(today)).toEqual(['Жим', 'Разводка']);
   });
 });

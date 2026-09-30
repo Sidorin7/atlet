@@ -75,6 +75,33 @@ export function addExerciseToDate(db: AnyDb, date: ISODate, exerciseId: number, 
   });
 }
 
+/**
+ * Puts the exercises of an earlier workout on `date`, in the same order and under the same name
+ * and colour. Sets start empty; last time's numbers show up as suggestions.
+ */
+export function repeatWorkout(db: AnyDb, sourceWorkoutId: number, date: ISODate): number {
+  return db.transaction((tx) => {
+    const source = tx.select().from(workouts).where(eq(workouts.id, sourceWorkoutId)).get();
+    if (!source) throw new Error(`Workout ${sourceWorkoutId} not found`);
+    const exerciseIds = tx
+      .select({ id: workoutExercises.exerciseId })
+      .from(workoutExercises)
+      .where(eq(workoutExercises.workoutId, sourceWorkoutId))
+      .orderBy(workoutExercises.position)
+      .all()
+      .map((r) => r.id);
+    const workoutId =
+      workoutIdOn(tx, date) ??
+      tx
+        .insert(workouts)
+        .values({ date, programId: source.programId, name: source.name, color: source.color })
+        .returning({ id: workouts.id })
+        .get().id;
+    appendExercises(tx, workoutId, exerciseIds);
+    return workoutId;
+  });
+}
+
 /** Cascades to the workout's exercises and sets. */
 export function removeWorkout(db: AnyDb, workoutId: number) {
   db.delete(workouts).where(eq(workouts.id, workoutId)).run();

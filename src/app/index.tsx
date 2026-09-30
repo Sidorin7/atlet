@@ -1,5 +1,6 @@
+import * as Haptics from 'expo-haptics';
 import { Link, router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { LayoutAnimation, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
@@ -8,6 +9,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { MonthGrid, WeekStrip } from '@/components/calendar';
 import { EmptyIllustration } from '@/components/empty-illustration';
 import { ChevronRightIcon, GearIcon, MoreIcon, PlusIcon, StatsIcon } from '@/components/icons';
+import { ReminderCard } from '@/components/reminder-card';
 import { Button } from '@/components/ui';
 import { WorkoutView } from '@/components/workout-view';
 import { db } from '@/db/client';
@@ -17,8 +19,9 @@ import { useToday } from '@/lib/use-today';
 import { useSettings } from '@/settings/provider';
 import { radius, spacing, typography } from '@/theme/tokens';
 import { showWorkoutMenu } from '@/workouts/menu';
-import { lastDoneDate, workoutOnDate } from '@/workouts/queries';
-import { removeWorkout, renameWorkout } from '@/workouts/repo';
+import { doneDates, lastDoneDate, lastDoneWorkout, workoutOnDate } from '@/workouts/queries';
+import { reminderFor } from '@/workouts/reminder';
+import { removeWorkout, renameWorkout, repeatWorkout } from '@/workouts/repo';
 import { useMarks } from '@/workouts/use-marks';
 
 export default function DayScreen() {
@@ -33,6 +36,11 @@ export default function DayScreen() {
 
   const [workout] = useLive(() => workoutOnDate(db, selected), [selected]);
   const [{ last }] = useLive(() => lastDoneDate(db, today), [today]);
+  const [lastWorkout] = useLive(() => lastDoneWorkout(db, today), [today]);
+  const done = useLive(() => doneDates(db));
+  const reminder = useMemo(() => reminderFor(new Set(done.map((d) => d.date)), today), [done, today]);
+  // After a break, today's empty screen nudges back and offers to repeat the last workout.
+  const nudge = selected === today && !workout && reminder && lastWorkout ? { reminder, lastWorkout } : null;
 
   // After "move workout" the sheet sends us to the new day (`at` makes repeated moves to one date register).
   const { date: requested, at } = useLocalSearchParams<{ date?: string; at?: string }>();
@@ -171,10 +179,29 @@ export default function DayScreen() {
           <WorkoutView key={workout.id} workout={workout} />
         ) : (
           <View style={styles.empty}>
-            <EmptyIllustration disc={colors.surface} ink={colors.text} spark={colors.placeholder} />
-            <Text style={[typography.title, { color: colors.text }]}>{emptyText}</Text>
+            {nudge ? (
+              <ReminderCard reminder={nudge.reminder} last={nudge.lastWorkout} today={today} />
+            ) : (
+              <>
+                <EmptyIllustration disc={colors.surface} ink={colors.text} spark={colors.placeholder} />
+                <Text style={[typography.title, { color: colors.text }]}>{emptyText}</Text>
+              </>
+            )}
             <View style={styles.emptyActions}>
-              <Button title={t('day.pickProgram')} onPress={() => openLibrary('programs')} />
+              {nudge && (
+                <Button
+                  title={t('reminder.repeat')}
+                  onPress={() => {
+                    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                    repeatWorkout(db, nudge.lastWorkout.id, today);
+                  }}
+                />
+              )}
+              <Button
+                title={t('day.pickProgram')}
+                variant={nudge ? 'secondary' : 'primary'}
+                onPress={() => openLibrary('programs')}
+              />
               <Button title={t('day.pickExercises')} variant="secondary" onPress={() => openLibrary()} />
             </View>
           </View>
