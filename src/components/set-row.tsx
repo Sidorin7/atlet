@@ -1,5 +1,5 @@
 import * as Haptics from 'expo-haptics';
-import { useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
@@ -53,6 +53,27 @@ export function SetRow({
     updateSet(db, set.id, patch);
   };
 
+  // Leaving the row (tap elsewhere, Done, another set) accepts the grey numbers for every field
+  // left empty; what the user typed stays. Moving between the row's own two fields does not count,
+  // so the blur waits a moment to see whether focus landed on the other field.
+  const focused = useRef(0);
+  const latestPatch = useRef(patch);
+  useEffect(() => {
+    latestPatch.current = patch;
+  });
+  const leaveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  useEffect(() => () => clearTimeout(leaveTimer.current), []);
+  const onFieldFocus = () => {
+    focused.current += 1;
+  };
+  const onFieldBlur = () => {
+    focused.current = Math.max(0, focused.current - 1);
+    clearTimeout(leaveTimer.current);
+    leaveTimer.current = setTimeout(() => {
+      if (focused.current === 0 && latestPatch.current) updateSet(db, set.id, latestPatch.current);
+    }, 50);
+  };
+
   return (
     <ReanimatedSwipeable
       ref={swipeRef as never}
@@ -99,6 +120,8 @@ export function SetRow({
           signed={a.signed}
           autoFocus={autoFocus}
           onCommit={(n) => updateSet(db, set.id, a.write(n))}
+          onFocus={onFieldFocus}
+          onBlur={onFieldBlur}
         />
         <NumberPill
           value={b.read(set)}
@@ -107,6 +130,8 @@ export function SetRow({
           keyboard={b.keyboard}
           signed={b.signed}
           onCommit={(n) => updateSet(db, set.id, b.write(n))}
+          onFocus={onFieldFocus}
+          onBlur={onFieldBlur}
         />
       </View>
     </ReanimatedSwipeable>

@@ -27,6 +27,8 @@ export function NumberPill({
   signed,
   autoFocus,
   onCommit,
+  onFocus,
+  onBlur,
 }: {
   value: number | null;
   ghost: number | null;
@@ -35,6 +37,8 @@ export function NumberPill({
   signed?: boolean;
   autoFocus?: boolean;
   onCommit: (n: number | null) => void;
+  onFocus?: () => void;
+  onBlur?: () => void;
 }) {
   const colors = useColors();
   const format = (n: number | null) => formatNumber(n, { plus: signed });
@@ -60,6 +64,8 @@ export function NumberPill({
       keyboardType={keyboard}
       inputAccessoryViewID={ACCESSORY_ID}
       autoFocus={autoFocus}
+      onFocus={onFocus}
+      onBlur={onBlur}
       selectTextOnFocus
       maxLength={8}
       accessibilityLabel={unit}
