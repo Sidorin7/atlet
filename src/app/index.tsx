@@ -2,8 +2,20 @@ import * as Haptics from 'expo-haptics';
 import { Link, router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { LayoutAnimation, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import Animated, {
+  Easing,
+  FadeIn,
+  FadeOut,
+  LinearTransition,
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { MonthGrid, WeekStrip } from '@/components/calendar';
@@ -14,7 +26,7 @@ import { Button } from '@/components/ui';
 import { WorkoutView } from '@/components/workout-view';
 import { db } from '@/db/client';
 import { useLive } from '@/db/use-live';
-import { addMonths, diffDays, isSameMonth, monthTitle, startOfMonth, type ISODate } from '@/lib/dates';
+import { addDays, addMonths, diffDays, isSameMonth, monthTitle, startOfMonth, type ISODate } from '@/lib/dates';
 import { useToday } from '@/lib/use-today';
 import { useSettings } from '@/settings/provider';
 import { radius, spacing, typography } from '@/theme/tokens';
@@ -54,9 +66,57 @@ export default function DayScreen() {
     setMonth(startOfMonth(date));
   };
 
+  // Swipe left for the next day, right for the previous one. The day follows the finger; on release
+  // it either springs back or slides out with a fade while the next day slides in from the other side.
+  // Cards with their own swipe (exercises, sets, the workout title) react sooner, so this only takes
+  // swipes on the rest of the day; a mostly vertical move fails it and leaves the scroll alone.
+  const { width } = useWindowDimensions();
+  const reduced = useReducedMotion();
+  const dragX = useSharedValue(0);
+  const fade = useSharedValue(1);
+  const shift = SWIPE_SHIFT * width;
+
+  const commitDay = (delta: -1 | 1) => {
+    select(addDays(selected, delta));
+    // Next frame the new day is on screen (still invisible): start it off to the side and settle it in.
+    requestAnimationFrame(() => {
+      dragX.set(reduced ? 0 : delta * shift);
+      dragX.set(withTiming(0, { duration: 220, easing: EASE_OUT }));
+      fade.set(withTiming(1, { duration: 220, easing: EASE_OUT }));
+    });
+  };
+
+  const dayGesture = Gesture.Pan()
+    .activeOffsetX([-25, 25])
+    .failOffsetY([-12, 12])
+    .onUpdate((e) => {
+      if (reduced) return;
+      dragX.set(e.translationX * 0.85);
+      fade.set(1 - Math.min(Math.abs(e.translationX) / width, 1) * 0.6);
+    })
+    .onEnd((e) => {
+      const delta = e.translationX < -60 || e.velocityX < -600 ? 1 : e.translationX > 60 || e.velocityX > 600 ? -1 : 0;
+      if (delta === 0) {
+        dragX.set(withSpring(0, { duration: 400, dampingRatio: 0.8, velocity: e.velocityX }));
+        fade.set(withTiming(1, { duration: 200, easing: EASE_OUT }));
+        return;
+      }
+      scheduleOnRN(Haptics.selectionAsync);
+      if (!reduced) dragX.set(withTiming(-delta * shift, { duration: 140, easing: EASE_OUT }));
+      fade.set(
+        withTiming(0, { duration: 140, easing: EASE_OUT }, (finished) => {
+          if (finished) scheduleOnRN(commitDay, delta);
+        }),
+      );
+    });
+
+  const dayStyle = useAnimatedStyle(() => ({
+    opacity: fade.get(),
+    transform: [{ translateX: dragX.get() }],
+  }));
+
   const toggleMonth = (open: boolean) => {
     if (open === monthOpen) return;
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setMonthOpen(open);
     if (open) setMonth(startOfMonth(selected));
   };
@@ -139,74 +199,89 @@ export default function DayScreen() {
         </View>
       </View>
 
-      {monthOpen ? (
-        <MonthGrid
-          month={month}
-          selected={selected}
-          today={today}
-          marks={marks}
-          locale={language}
-          onSelect={select}
-        />
-      ) : (
-        <WeekStrip
-          selected={selected}
-          today={today}
-          marks={marks}
-          locale={language}
-          onSelect={select}
-        />
-      )}
-
-      <GestureDetector gesture={handleGesture}>
-        <Pressable
-          onPress={() => toggleMonth(!monthOpen)}
-          hitSlop={{ top: 8, bottom: 12, left: 60, right: 60 }}
-          accessibilityRole="button"
-          style={styles.handleArea}
-        >
-          <View style={[styles.handle, { backgroundColor: colors.placeholder }]} />
-        </Pressable>
-      </GestureDetector>
-
-      <ScrollView
-        contentContainerStyle={styles.content}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="interactive"
-        automaticallyAdjustKeyboardInsets
-      >
-        {workout ? (
-          <WorkoutView key={workout.id} workout={workout} />
+      {/* Week strip ⇄ month grid: the calendar crossfades while its height, and everything below, eases into place. */}
+      <Animated.View layout={CALENDAR_LAYOUT} style={styles.calendar}>
+        {monthOpen ? (
+          <Animated.View key="month" entering={CALENDAR_IN} exiting={CALENDAR_OUT}>
+            <MonthGrid
+              month={month}
+              selected={selected}
+              today={today}
+              marks={marks}
+              locale={language}
+              onSelect={select}
+            />
+          </Animated.View>
         ) : (
-          <View style={styles.empty}>
-            {nudge ? (
-              <ReminderCard reminder={nudge.reminder} last={nudge.lastWorkout} today={today} />
-            ) : (
-              <>
-                <EmptyIllustration disc={colors.surface} ink={colors.text} spark={colors.placeholder} />
-                <Text style={[typography.title, { color: colors.text }]}>{emptyText}</Text>
-              </>
-            )}
-            <View style={styles.emptyActions}>
-              {nudge && (
-                <Button
-                  title={t('reminder.repeat')}
-                  onPress={() => {
-                    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                    repeatWorkout(db, nudge.lastWorkout.id, today);
-                  }}
-                />
-              )}
-              <Button
-                title={t('day.pickProgram')}
-                variant={nudge ? 'secondary' : 'primary'}
-                onPress={() => openLibrary('programs')}
-              />
-              <Button title={t('day.pickExercises')} variant="secondary" onPress={() => openLibrary()} />
-            </View>
-          </View>
+          <Animated.View key="week" entering={CALENDAR_IN} exiting={CALENDAR_OUT}>
+            <WeekStrip
+              selected={selected}
+              today={today}
+              marks={marks}
+              locale={language}
+              onSelect={select}
+            />
+          </Animated.View>
         )}
-      </ScrollView>
+      </Animated.View>
+
+      <Animated.View layout={CALENDAR_LAYOUT}>
+        <GestureDetector gesture={handleGesture}>
+          <Pressable
+            onPress={() => toggleMonth(!monthOpen)}
+            hitSlop={{ top: 8, bottom: 12, left: 60, right: 60 }}
+            accessibilityRole="button"
+            style={styles.handleArea}
+          >
+            <View style={[styles.handle, { backgroundColor: colors.placeholder }]} />
+          </Pressable>
+        </GestureDetector>
+      </Animated.View>
+
+      <Animated.View layout={CALENDAR_LAYOUT} style={styles.flex}>
+        <GestureDetector gesture={dayGesture}>
+          <ScrollView
+            contentContainerStyle={styles.content}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="interactive"
+            automaticallyAdjustKeyboardInsets
+          >
+            <Animated.View style={[styles.page, dayStyle]}>
+              {workout ? (
+                <WorkoutView key={workout.id} workout={workout} />
+              ) : (
+                <View style={styles.empty}>
+                  {nudge ? (
+                    <ReminderCard reminder={nudge.reminder} last={nudge.lastWorkout} today={today} />
+                  ) : (
+                    <>
+                      <EmptyIllustration disc={colors.surface} ink={colors.text} spark={colors.placeholder} />
+                      <Text style={[typography.title, { color: colors.text }]}>{emptyText}</Text>
+                    </>
+                  )}
+                  <View style={styles.emptyActions}>
+                    {nudge && (
+                      <Button
+                        title={t('reminder.repeat')}
+                        onPress={() => {
+                          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                          repeatWorkout(db, nudge.lastWorkout.id, today);
+                        }}
+                      />
+                    )}
+                    <Button
+                      title={t('day.pickProgram')}
+                      variant={nudge ? 'secondary' : 'primary'}
+                      onPress={() => openLibrary('programs')}
+                    />
+                    <Button title={t('day.pickExercises')} variant="secondary" onPress={() => openLibrary()} />
+                  </View>
+                </View>
+              )}
+            </Animated.View>
+          </ScrollView>
+        </GestureDetector>
+      </Animated.View>
 
       <Pressable
         onPress={() => openLibrary()}
@@ -240,6 +315,14 @@ export default function DayScreen() {
   );
 }
 
+/** How far a day slides while leaving or arriving, as a share of the screen width. */
+const SWIPE_SHIFT = 0.3;
+const EASE_OUT = Easing.bezier(0.23, 1, 0.32, 1);
+const EASE_IN_OUT = Easing.bezier(0.77, 0, 0.175, 1);
+const CALENDAR_LAYOUT = LinearTransition.duration(260).easing(EASE_IN_OUT);
+const CALENDAR_IN = FadeIn.duration(200).easing(EASE_OUT);
+const CALENDAR_OUT = FadeOut.duration(120).easing(EASE_OUT);
+
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   header: {
@@ -255,6 +338,8 @@ const styles = StyleSheet.create({
   handleArea: { alignItems: 'center', paddingVertical: spacing.sm },
   handle: { width: 40, height: 5, borderRadius: radius.full },
   content: { padding: spacing.md, gap: spacing.sm, paddingBottom: 120, flexGrow: 1 },
+  page: { flexGrow: 1 },
+  calendar: { overflow: 'hidden' },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.sm, paddingTop: spacing.lg },
   emptyActions: { alignSelf: 'stretch', gap: spacing.sm, marginTop: spacing.md },
   todayButton: {
