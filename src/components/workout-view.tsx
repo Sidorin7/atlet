@@ -16,7 +16,7 @@ import { useColors, useSettings } from '@/settings/provider';
 import { radius, spacing, typography } from '@/theme/tokens';
 import { ghostPatch, suggestions } from '@/workouts/fields';
 import { previousSession, setsOf, workoutExercisesOf, workoutSetSummary } from '@/workouts/queries';
-import { addSet, removeWorkoutExercise } from '@/workouts/repo';
+import { addSet, removeWorkout, removeWorkoutExercise } from '@/workouts/repo';
 
 import { NumberPadDone } from './number-pill';
 import { NUMBER_WIDTH, SetRow, useSetFields } from './set-row';
@@ -47,13 +47,47 @@ export function WorkoutView({ workout }: { workout: Workout }) {
       return next;
     });
 
+  // Swipe the title card left to delete the whole workout; asks first only if sets were logged.
+  const swipeRef = useRef<{ close: () => void } | null>(null);
+  const deleteWorkout = () => {
+    if (!summary.some((r) => r.filled > 0)) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      removeWorkout(db, workout.id);
+      return;
+    }
+    Alert.alert(t('workout.deleteConfirm', { name: workout.name }), t('workout.deleteMessage'), [
+      { text: t('common.cancel'), style: 'cancel', onPress: () => swipeRef.current?.close() },
+      { text: t('common.delete'), style: 'destructive', onPress: () => removeWorkout(db, workout.id) },
+    ]);
+  };
+
   return (
     <View style={styles.list}>
-      <GradientCard
-        color={workout.color}
-        title={workout.name}
-        subtitle={t('library.exerciseCount', { count: items.length })}
-      />
+      <ReanimatedSwipeable
+        ref={swipeRef as never}
+        friction={1.5}
+        rightThreshold={SWIPE_THRESHOLD}
+        overshootRight={false}
+        onSwipeableOpen={deleteWorkout}
+        renderRightActions={() => (
+          <View style={[styles.swipeAction, styles.swipeRight, styles.cardAction, { backgroundColor: colors.danger }]}>
+            <TrashIcon color="#FFFFFF" />
+            <Text style={[typography.caption, styles.swipeText]}>{t('common.delete')}</Text>
+          </View>
+        )}
+      >
+        <View
+          accessible
+          accessibilityActions={[{ name: 'delete', label: t('workout.menuDelete') }]}
+          onAccessibilityAction={deleteWorkout}
+        >
+          <GradientCard
+            color={workout.color}
+            title={workout.name}
+            subtitle={t('library.exerciseCount', { count: items.length })}
+          />
+        </View>
+      </ReanimatedSwipeable>
       {items.map((item) => (
         <ExerciseItem
           key={item.id}
@@ -268,6 +302,7 @@ const styles = StyleSheet.create({
   swipeLeft: { marginRight: 6 },
   swipeRight: { marginLeft: 6 },
   swipeText: { color: '#FFFFFF' },
+  cardAction: { borderRadius: radius.xl },
   sets: { paddingBottom: spacing.xs },
   notes: { paddingHorizontal: spacing.xs, paddingBottom: spacing.xs },
   columns: { flexDirection: 'row', gap: 6 },
