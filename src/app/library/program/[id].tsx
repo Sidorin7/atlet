@@ -45,7 +45,8 @@ export default function ProgramScreen() {
           <GradientCard
             color={program.color}
             title={program.name}
-            subtitle={t('library.exerciseCount', { count: items.length })}
+            count={items.length}
+            countLabel={t('library.exerciseCount', { count: items.length })}
           />
         )}
         {items.map((e, i) => (

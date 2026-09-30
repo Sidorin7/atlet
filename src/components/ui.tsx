@@ -187,30 +187,37 @@ export function EmptyText({ children }: { children: string }) {
   return <Text style={[typography.body, styles.empty, { color: colors.textSecondary }]}>{children}</Text>;
 }
 
+/** Program or workout card: gradient, name on the left, exercise count in a circle on the right. */
 export function GradientCard({
   color,
   title,
-  subtitle,
+  count,
+  countLabel,
   onPress,
 }: {
   color: string;
   title: string;
-  subtitle?: string;
+  count: number;
+  /** Spoken instead of the bare number, e.g. "6 exercises". */
+  countLabel?: string;
   onPress?: () => void;
 }) {
   const stops = programGradients[color as ProgramColor] ?? programGradients.pink;
   return (
-    <Pressable onPress={onPress} disabled={!onPress} accessibilityRole={onPress ? 'button' : undefined}>
-      <LinearGradient
-        colors={[...stops]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.card}
-      >
-        <Text numberOfLines={2} style={[typography.title, styles.cardTitle]}>
+    <Pressable
+      onPress={onPress}
+      disabled={!onPress}
+      accessibilityRole={onPress ? 'button' : undefined}
+      accessibilityLabel={`${title}, ${countLabel ?? count}`}
+      style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}
+    >
+      <LinearGradient colors={[...stops]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.card}>
+        <Text numberOfLines={1} style={styles.cardTitle}>
           {title}
         </Text>
-        {subtitle ? <Text style={[typography.caption, styles.cardSubtitle]}>{subtitle}</Text> : null}
+        <View style={styles.countCircle}>
+          <Text style={styles.countText}>{count}</Text>
+        </View>
       </LinearGradient>
     </Pressable>
   );
@@ -282,13 +289,24 @@ const styles = StyleSheet.create({
   label: { marginBottom: spacing.sm, marginTop: spacing.sm },
   empty: { textAlign: 'center', marginTop: spacing.xl },
   card: {
-    borderRadius: radius.xl,
-    padding: spacing.lg,
-    minHeight: 110,
-    justifyContent: 'space-between',
+    borderRadius: radius.lg,
+    paddingLeft: spacing.lg,
+    paddingRight: 12,
+    paddingVertical: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
   },
-  cardTitle: { color: '#FFFFFF' },
-  cardSubtitle: { color: 'rgba(255,255,255,0.85)' },
+  cardTitle: { flex: 1, color: '#FFFFFF', fontSize: 18, fontWeight: '700' },
+  countCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.16)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  countText: { color: '#FFFFFF', fontSize: 20, fontWeight: '700' },
   swatches: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   swatchRing: {
     width: 48,

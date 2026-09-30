@@ -139,7 +139,8 @@ export default function LibraryHome() {
                 key={p.id}
                 color={p.color}
                 title={p.name}
-                subtitle={t('library.exerciseCount', { count: p.exerciseCount })}
+                count={p.exerciseCount}
+                countLabel={t('library.exerciseCount', { count: p.exerciseCount })}
                 onPress={() =>
                   router.push({ pathname: '/library/program/[id]', params: { id: String(p.id), date } })
                 }

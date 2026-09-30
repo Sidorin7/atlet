@@ -78,14 +78,11 @@ export function WorkoutView({ workout }: { workout: Workout }) {
       >
         <View
           accessible
+          accessibilityLabel={`${workout.name}, ${t('library.exerciseCount', { count: items.length })}`}
           accessibilityActions={[{ name: 'delete', label: t('workout.menuDelete') }]}
           onAccessibilityAction={deleteWorkout}
         >
-          <GradientCard
-            color={workout.color}
-            title={workout.name}
-            subtitle={t('library.exerciseCount', { count: items.length })}
-          />
+          <GradientCard color={workout.color} title={workout.name} count={items.length} />
         </View>
       </ReanimatedSwipeable>
       {items.map((item) => (
@@ -302,7 +299,7 @@ const styles = StyleSheet.create({
   swipeLeft: { marginRight: 6 },
   swipeRight: { marginLeft: 6 },
   swipeText: { color: '#FFFFFF' },
-  cardAction: { borderRadius: radius.xl },
+  cardAction: { borderRadius: radius.lg },
   sets: { paddingBottom: spacing.xs },
   notes: { paddingHorizontal: spacing.xs, paddingBottom: spacing.xs },
   columns: { flexDirection: 'row', gap: 6 },
