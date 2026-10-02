@@ -52,6 +52,8 @@ export const en: Translation = {
     moveHere: 'Move here',
     willMerge: 'That day already has a workout: the exercises will be added to it.',
     actions: 'Workout actions',
+    durationMinutes: '{{m}} min',
+    durationHours: '{{h}} h {{m}} min',
   },
   reminder: {
     daysOff_one: '{{count}} day without a workout',

@@ -122,7 +122,7 @@ describe('round trip', () => {
     const b = exportBackup(source, NOW);
     const [we] = b.data.workoutExercises;
     const many = Array.from({ length: 3000 }, (_, i) => ({
-      id: 10_000 + i, workoutExerciseId: we.id, position: 100 + i, weightKg: 50, reps: 5, durationSec: null, distanceM: null,
+      id: 10_000 + i, workoutExerciseId: we.id, position: 100 + i, weightKg: 50, reps: 5, durationSec: null, distanceM: null, loggedAt: null,
     }));
     const target = await createTestDb();
     importBackup(target, { ...b, data: { ...b.data, sets: [...b.data.sets, ...many] } });
@@ -137,6 +137,13 @@ describe('validateBackup', () => {
   it('accepts a real export', async () => {
     const b = await good();
     expect(() => validateBackup(b)).not.toThrow();
+  });
+
+  it('accepts sets from before set times were saved, reading the missing time as null', async () => {
+    const b = await good();
+    for (const s of b.data.sets) delete s.loggedAt;
+    expect(validateBackup(b).data.sets.every((s) => s.loggedAt === null)).toBe(true);
+    bad({ ...b, data: { ...b.data, sets: [{ ...b.data.sets[0], loggedAt: 'noon' }] } });
   });
 
   it('rejects things that are not a GymApp v1 backup', async () => {

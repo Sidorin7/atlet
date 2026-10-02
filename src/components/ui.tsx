@@ -193,6 +193,7 @@ export function GradientCard({
   title,
   count,
   countLabel,
+  aside,
   onPress,
 }: {
   color: string;
@@ -200,6 +201,8 @@ export function GradientCard({
   count: number;
   /** Spoken instead of the bare number, e.g. "6 exercises". */
   countLabel?: string;
+  /** Small extra shown right after the title, e.g. the workout timer. */
+  aside?: ReactNode;
   onPress?: () => void;
 }) {
   const stops = programGradients[color as ProgramColor] ?? programGradients.pink;
@@ -215,6 +218,7 @@ export function GradientCard({
         <Text numberOfLines={1} style={styles.cardTitle}>
           {title}
         </Text>
+        {aside}
         <View style={styles.countCircle}>
           <Text style={styles.countText}>{count}</Text>
         </View>
@@ -297,8 +301,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.md,
   },
-  cardTitle: { flex: 1, color: '#FFFFFF', fontSize: 18, fontWeight: '700' },
+  cardTitle: { flexShrink: 1, color: '#FFFFFF', fontSize: 18, fontWeight: '700' },
   countCircle: {
+    marginLeft: 'auto',
     width: 44,
     height: 44,
     borderRadius: 22,

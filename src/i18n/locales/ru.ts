@@ -50,6 +50,8 @@ export const ru = {
     moveHere: 'Перенести сюда',
     willMerge: 'В этот день уже есть тренировка: упражнения добавятся к ней.',
     actions: 'Действия с тренировкой',
+    durationMinutes: '{{m}} мин',
+    durationHours: '{{h}} ч {{m}} мин',
   },
   reminder: {
     daysOff_one: '{{count}} день без тренировок',

@@ -13,6 +13,7 @@ const set = (values: Partial<SetRecord> = {}): SetRecord => ({
   reps: null,
   durationSec: null,
   distanceM: null,
+  loggedAt: null,
   ...values,
 });
 const pairs = (rows: (SetRecord | undefined)[]) => rows.map((s) => (s ? [s.weightKg, s.reps] : undefined));

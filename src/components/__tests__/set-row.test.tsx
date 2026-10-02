@@ -18,7 +18,7 @@ jest.mock('react-native-gesture-handler/ReanimatedSwipeable', () => {
   };
 });
 
-const empty = { id: 7, workoutExerciseId: 1, position: 1, weightKg: null, reps: null, durationSec: null, distanceM: null };
+const empty = { id: 7, workoutExerciseId: 1, position: 1, weightKg: null, reps: null, durationSec: null, distanceM: null, loggedAt: null };
 const ghost = { ...empty, id: 6, position: 0, weightKg: 60, reps: 10 };
 
 describe('SetRow', () => {

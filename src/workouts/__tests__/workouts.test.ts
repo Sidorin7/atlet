@@ -5,7 +5,14 @@ import { createTestDb } from '@/db/test-db';
 import type { AnyDb } from '@/db/types';
 import { createExercise, createGroup, createProgram, updateProgram } from '@/library/repo';
 
-import { addExerciseToDate, addProgramToDate, removeWorkout, repeatWorkout } from '../repo';
+import {
+  addExerciseToDate,
+  addProgramToDate,
+  addSet,
+  removeWorkout,
+  repeatWorkout,
+  updateSet,
+} from '../repo';
 import {
   daysSinceLastWorkout,
   doneDates,
@@ -14,6 +21,7 @@ import {
   workoutExercisesOf,
   workoutMarks,
   workoutOnDate,
+  workoutTiming,
 } from '../queries';
 
 let db: AnyDb;
@@ -217,5 +225,36 @@ describe('repeatWorkout', () => {
     const today = addExerciseToDate(db, '2026-09-29', ids[0], 'Сегодня');
     expect(repeatWorkout(db, source, '2026-09-29')).toBe(today);
     expect(namesOf(today)).toEqual(['Жим', 'Разводка']);
+  });
+});
+
+describe('set timing', () => {
+  const setup = () => {
+    const w = addProgramToDate(db, '2026-09-29', createProgram(db, { name: 'A', color: 'pink', exerciseIds: [ids[0]] }));
+    const we = db.select().from(workoutExercises).where(eq(workoutExercises.workoutId, w)).get()!;
+    const [first] = db.select().from(sets).where(eq(sets.workoutExerciseId, we.id)).all();
+    return { w, we: we.id, first: first.id };
+  };
+  const loggedAt = (id: number) => db.select().from(sets).where(eq(sets.id, id)).get()!.loggedAt;
+
+  it('stamps a set when it first gets a result and keeps that time on later edits', () => {
+    const { first } = setup();
+    updateSet(db, first, { weightKg: 60 }, 1000);
+    expect(loggedAt(first)).toBeNull(); // weight alone is not a result
+    updateSet(db, first, { reps: 8 }, 2000);
+    updateSet(db, first, { reps: 10 }, 3000);
+    expect(loggedAt(first)).toBe(2000);
+    updateSet(db, first, { reps: null }, 4000);
+    expect(loggedAt(first)).toBeNull();
+  });
+
+  it('reports the first and latest logged set and how many sets are still empty', () => {
+    const { w, we, first } = setup();
+    expect(workoutTiming(db, w).get()).toEqual({ first: null, last: null, empty: 1 });
+    updateSet(db, first, { reps: 8 }, 1000);
+    const second = addSet(db, we);
+    expect(workoutTiming(db, w).get()).toEqual({ first: 1000, last: 1000, empty: 1 });
+    updateSet(db, second, { reps: 8 }, 5000);
+    expect(workoutTiming(db, w).get()).toEqual({ first: 1000, last: 5000, empty: 0 });
   });
 });

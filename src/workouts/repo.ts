@@ -4,6 +4,8 @@ import { programExercises, programs, sets, workoutExercises, workouts } from '@/
 import type { AnyDb } from '@/db/types';
 import type { ISODate } from '@/lib/dates';
 
+import { filled } from './queries';
+
 type Tx = Pick<AnyDb, 'select' | 'insert' | 'update' | 'delete'>;
 
 /** Colour of a workout that has no program behind it. */
@@ -131,8 +133,18 @@ export function addSet(db: AnyDb, workoutExerciseId: number): number {
   });
 }
 
-export function updateSet(db: AnyDb, setId: number, values: SetValues) {
-  db.update(sets).set(values).where(eq(sets.id, setId)).run();
+/**
+ * The set keeps the moment it first got a result (`loggedAt`); editing it later does not move the
+ * time, clearing it does.
+ */
+export function updateSet(db: AnyDb, setId: number, values: SetValues, now: number = Date.now()) {
+  db.transaction((tx) => {
+    tx.update(sets).set(values).where(eq(sets.id, setId)).run();
+    tx.update(sets)
+      .set({ loggedAt: sql`case when ${filled} then coalesce(${sets.loggedAt}, ${now}) else null end` })
+      .where(eq(sets.id, setId))
+      .run();
+  });
 }
 
 export function deleteSet(db: AnyDb, setId: number) {

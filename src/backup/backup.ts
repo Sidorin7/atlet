@@ -60,7 +60,8 @@ export function exportBackup(db: Reader, now: Date = new Date()): BackupFile {
 
 // ── validation ──────────────────────────────────────────────────────────────
 
-type Kind = 'int' | 'int?' | 'num?' | 'str' | 'bool' | 'date' | 'type';
+// 'new-int?' is a nullable int added after version 1 shipped: older backups lack it, read as null.
+type Kind = 'int' | 'int?' | 'new-int?' | 'num?' | 'str' | 'bool' | 'date' | 'type';
 
 const SPEC: { [T in keyof BackupData]: Record<string, Kind> } = {
   muscleGroups: { id: 'int', name: 'str', icon: 'str', position: 'int' },
@@ -77,6 +78,7 @@ const SPEC: { [T in keyof BackupData]: Record<string, Kind> } = {
     reps: 'int?',
     durationSec: 'int?',
     distanceM: 'num?',
+    loggedAt: 'new-int?',
   },
   settings: { key: 'str', value: 'str' },
 };
@@ -94,6 +96,7 @@ const isNum = (v: unknown) => typeof v === 'number' && Number.isFinite(v);
 const CHECKS: Record<Kind, (v: unknown) => boolean> = {
   int: isInt,
   'int?': (v) => v === null || isInt(v),
+  'new-int?': (v) => v === undefined || v === null || isInt(v),
   'num?': (v) => v === null || isNum(v),
   str: (v) => typeof v === 'string',
   bool: (v) => typeof v === 'boolean',
@@ -125,7 +128,7 @@ export function validateBackup(value: unknown): BackupFile {
       for (const [field, kind] of Object.entries(spec)) {
         const v = (row as Record<string, unknown>)[field];
         if (!CHECKS[kind](v)) return fail(`${table}[${i}].${field} is invalid`);
-        out[field] = v;
+        out[field] = v ?? null;
       }
       return out;
     });
@@ -212,7 +215,7 @@ export function importBackup(db: AnyDb, backup: BackupFile) {
     insertAll(tx, programExercises, d.programExercises, 4);
     insertAll(tx, workouts, d.workouts, 7);
     insertAll(tx, workoutExercises, d.workoutExercises, 4);
-    insertAll(tx, sets, d.sets, 7);
+    insertAll(tx, sets, d.sets, 8);
     insertAll(tx, settings, d.settings, 2);
 
     // A restored database is never "fresh": default groups must not be recreated on next launch.

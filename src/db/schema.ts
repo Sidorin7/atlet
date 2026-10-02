@@ -75,6 +75,8 @@ export const sets = sqliteTable('sets', {
   reps: integer('reps'),
   durationSec: integer('duration_sec'),
   distanceM: real('distance_m'),
+  /** Epoch ms when the set first got a result; null while it is empty. Drives the workout timer. */
+  loggedAt: integer('logged_at'),
 });
 
 export const settings = sqliteTable('settings', {

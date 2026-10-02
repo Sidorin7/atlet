@@ -124,3 +124,15 @@ export function previousSession(db: Reader, exerciseId: number, beforeDate: ISOD
     .all();
   return { date: last.date, sets: rows };
 }
+
+/** When the workout's first and latest results were logged, and how many sets are still empty. */
+export const workoutTiming = (db: Reader, workoutId: number) =>
+  db
+    .select({
+      first: min(sets.loggedAt),
+      last: max(sets.loggedAt),
+      empty: sql<number>`coalesce(sum(case when ${filled} then 0 else 1 end), 0)`,
+    })
+    .from(sets)
+    .innerJoin(workoutExercises, eq(workoutExercises.id, sets.workoutExerciseId))
+    .where(eq(workoutExercises.workoutId, workoutId));

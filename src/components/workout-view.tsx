@@ -6,17 +6,19 @@ import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import ReanimatedSwipeable, { SwipeDirection } from 'react-native-gesture-handler/ReanimatedSwipeable';
 
 import { GroupIcon } from '@/components/group-icons';
-import { ChevronRightIcon, PlusIcon, StatsIcon, TrashIcon } from '@/components/icons';
+import { ChevronRightIcon, ClockIcon, PlusIcon, StatsIcon, TrashIcon } from '@/components/icons';
 import { GradientCard } from '@/components/ui';
 import { db } from '@/db/client';
 import type { workouts } from '@/db/schema';
 import { useLive } from '@/db/use-live';
 import { shortDayLabel } from '@/lib/dates';
+import { useToday } from '@/lib/use-today';
 import { useColors, useSettings } from '@/settings/provider';
 import { radius, spacing, typography } from '@/theme/tokens';
 import { ghostPatch, suggestions } from '@/workouts/fields';
-import { previousSession, setsOf, workoutExercisesOf, workoutSetSummary } from '@/workouts/queries';
+import { previousSession, setsOf, workoutExercisesOf, workoutSetSummary, workoutTiming } from '@/workouts/queries';
 import { addSet, removeWorkout, removeWorkoutExercise } from '@/workouts/repo';
+import { workoutClock } from '@/workouts/timer';
 
 import { NumberPadDone } from './number-pill';
 import { NUMBER_WIDTH, SetRow, useSetFields } from './set-row';
@@ -30,6 +32,8 @@ export function WorkoutView({ workout }: { workout: Workout }) {
   const items = useLive(() => workoutExercisesOf(db, workout.id), [workout.id]);
   const summary = useLive(() => workoutSetSummary(db, workout.id), [workout.id]);
   const filled = useMemo(() => new Map(summary.map((r) => [r.workoutExerciseId, r.filled])), [summary]);
+  const clock = useWorkoutClock(workout);
+  const clockLabel = clock && formatDuration(t, clock.minutes);
 
   // The first exercise starts open so a set can be typed straight away.
   const [expanded, setExpanded] = useState<ReadonlySet<number>>(new Set());
@@ -78,11 +82,25 @@ export function WorkoutView({ workout }: { workout: Workout }) {
       >
         <View
           accessible
-          accessibilityLabel={`${workout.name}, ${t('library.exerciseCount', { count: items.length })}`}
+          accessibilityLabel={[workout.name, clockLabel, t('library.exerciseCount', { count: items.length })]
+            .filter(Boolean)
+            .join(', ')}
           accessibilityActions={[{ name: 'delete', label: t('workout.menuDelete') }]}
           onAccessibilityAction={deleteWorkout}
         >
-          <GradientCard color={workout.color} title={workout.name} count={items.length} />
+          <GradientCard
+            color={workout.color}
+            title={workout.name}
+            count={items.length}
+            aside={
+              clock && (
+                <View style={styles.timer}>
+                  <ClockIcon size={13} color="#FFFFFF" />
+                  <Text style={styles.timerText}>{clockLabel}</Text>
+                </View>
+              )
+            }
+          />
         </View>
       </ReanimatedSwipeable>
       {items.map((item) => (
@@ -103,6 +121,27 @@ export function WorkoutView({ workout }: { workout: Workout }) {
       <NumberPadDone />
     </View>
   );
+}
+
+/** Time from the first logged set to the last; counts up live while the workout is going on. */
+function useWorkoutClock(workout: Workout) {
+  const today = useToday();
+  const [timing] = useLive(() => workoutTiming(db, workout.id), [workout.id]);
+  const [now, setNow] = useState(() => Date.now());
+  // Only today's started workout can be running, so only it needs the clock to move.
+  const live = workout.date === today && timing?.first != null;
+  useEffect(() => {
+    if (!live) return;
+    const id = setInterval(() => setNow(Date.now()), TICK_MS);
+    return () => clearInterval(id);
+  }, [live]);
+  return workoutClock(timing, workout.date === today, now);
+}
+
+function formatDuration(t: ReturnType<typeof useTranslation>['t'], minutes: number) {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return h > 0 ? t('workout.durationHours', { h, m }) : t('workout.durationMinutes', { m });
 }
 
 function ExerciseItem({
@@ -274,6 +313,8 @@ function Sets({ item, date, onRemove }: { item: Item; date: string; onRemove: ()
 
 const SWIPE_WIDTH = 96;
 const SWIPE_THRESHOLD = 72;
+/** How often a running workout timer refreshes, ms. */
+const TICK_MS = 10_000;
 
 const styles = StyleSheet.create({
   list: { gap: spacing.sm },
@@ -300,6 +341,16 @@ const styles = StyleSheet.create({
   swipeRight: { marginLeft: 6 },
   swipeText: { color: '#FFFFFF' },
   cardAction: { borderRadius: radius.lg },
+  timer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: radius.full,
+    backgroundColor: 'rgba(255,255,255,0.16)',
+  },
+  timerText: { color: '#FFFFFF', fontSize: 13, fontWeight: '600', fontVariant: ['tabular-nums'] },
   sets: { paddingBottom: spacing.xs },
   notes: { paddingHorizontal: spacing.xs, paddingBottom: spacing.xs },
   columns: { flexDirection: 'row', gap: 6 },
