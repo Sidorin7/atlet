@@ -2,7 +2,7 @@ import * as Haptics from 'expo-haptics';
 import { Link, router, useLocalSearchParams } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   Easing,
@@ -15,6 +15,7 @@ import Animated, {
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
+import { ScrollViewContainer } from 'react-native-reorderable-list';
 import { scheduleOnRN } from 'react-native-worklets';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -242,7 +243,8 @@ export default function DayScreen() {
 
       <Animated.View layout={CALENDAR_LAYOUT} style={styles.flex}>
         <GestureDetector gesture={dayGesture}>
-          <ScrollView
+          {/* The container lets exercises be dragged to a new place, scrolling the day as needed. */}
+          <ScrollViewContainer
             contentContainerStyle={styles.content}
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="interactive"
@@ -281,7 +283,7 @@ export default function DayScreen() {
                 </View>
               )}
             </Animated.View>
-          </ScrollView>
+          </ScrollViewContainer>
         </GestureDetector>
       </Animated.View>
 

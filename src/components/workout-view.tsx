@@ -3,7 +3,10 @@ import { router } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Gesture } from 'react-native-gesture-handler';
 import ReanimatedSwipeable, { SwipeDirection } from 'react-native-gesture-handler/ReanimatedSwipeable';
+import { NestedReorderableList, useReorderableDrag } from 'react-native-reorderable-list';
+import { scheduleOnRN } from 'react-native-worklets';
 
 import { GroupIcon } from '@/components/group-icons';
 import { ChevronRightIcon, ClockIcon, PlusIcon, StatsIcon, TrashIcon } from '@/components/icons';
@@ -11,13 +14,14 @@ import { GradientCard } from '@/components/ui';
 import { db } from '@/db/client';
 import type { workouts } from '@/db/schema';
 import { useLive } from '@/db/use-live';
+import { moveItem } from '@/library/utils';
 import { shortDayLabel } from '@/lib/dates';
 import { useToday } from '@/lib/use-today';
 import { useColors, useSettings } from '@/settings/provider';
 import { radius, spacing, typography } from '@/theme/tokens';
 import { ghostPatch, suggestions } from '@/workouts/fields';
 import { previousSession, setsOf, workoutExercisesOf, workoutSetSummary, workoutTiming } from '@/workouts/queries';
-import { addSet, removeWorkout, removeWorkoutExercise } from '@/workouts/repo';
+import { addSet, removeWorkout, removeWorkoutExercise, reorderWorkoutExercises } from '@/workouts/repo';
 import { workoutClock } from '@/workouts/timer';
 
 import { NumberPadDone } from './number-pill';
@@ -29,7 +33,10 @@ type Item = ReturnType<typeof workoutExercisesOf>['_']['result'][number];
 export function WorkoutView({ workout }: { workout: Workout }) {
   const { t } = useTranslation();
   const colors = useColors();
-  const items = useLive(() => workoutExercisesOf(db, workout.id), [workout.id]);
+  const saved = useLive(() => workoutExercisesOf(db, workout.id), [workout.id]);
+  // The list wants its data reordered right on drop; hold that order until the database catches up.
+  const [dropped, setDropped] = useState<{ from: Item[]; order: Item[] } | null>(null);
+  const items = dropped?.from === saved ? dropped.order : saved;
   const summary = useLive(() => workoutSetSummary(db, workout.id), [workout.id]);
   const filled = useMemo(() => new Map(summary.map((r) => [r.workoutExerciseId, r.filled])), [summary]);
   const clock = useWorkoutClock(workout);
@@ -50,6 +57,22 @@ export function WorkoutView({ workout }: { workout: Workout }) {
       if (!next.delete(id)) next.add(id);
       return next;
     });
+
+  // Hold an exercise card to pick it up, then drag it up or down. The pan only wakes up after the
+  // hold, so card swipes, day swipes and scrolling work as before.
+  const dragPan = useMemo(() => Gesture.Pan().activateAfterLongPress(DRAG_DELAY), []);
+  const reorder = (from: number, to: number) => {
+    if (from === to) return;
+    const next = moveItem(items, from, to);
+    setDropped({ from: saved, order: next });
+    reorderWorkoutExercises(db, next.map((i) => i.id));
+  };
+  const move = (index: number, delta: -1 | 1) => {
+    const to = index + delta;
+    if (to < 0 || to >= items.length) return;
+    Haptics.selectionAsync();
+    reorder(index, to);
+  };
 
   // Swipe the title card left to delete the whole workout; asks first only if sets were logged.
   const swipeRef = useRef<{ close: () => void } | null>(null);
@@ -103,16 +126,30 @@ export function WorkoutView({ workout }: { workout: Workout }) {
           />
         </View>
       </ReanimatedSwipeable>
-      {items.map((item) => (
-        <ExerciseItem
-          key={item.id}
-          item={item}
-          date={workout.date}
-          open={expanded.has(item.id)}
-          filledSets={filled.get(item.id) ?? 0}
-          onToggle={() => toggle(item.id)}
-        />
-      ))}
+      <NestedReorderableList
+        data={items}
+        keyExtractor={(item) => String(item.id)}
+        renderItem={({ item, index }) => (
+          <ExerciseItem
+            item={item}
+            date={workout.date}
+            open={expanded.has(item.id)}
+            filledSets={filled.get(item.id) ?? 0}
+            onToggle={() => toggle(item.id)}
+            onMove={(delta) => move(index, delta)}
+          />
+        )}
+        onReorder={({ from, to }) => reorder(from, to)}
+        onDragStart={() => {
+          'worklet';
+          scheduleOnRN(Haptics.impactAsync, Haptics.ImpactFeedbackStyle.Medium);
+        }}
+        panGesture={dragPan}
+        ItemSeparatorComponent={Separator}
+        initialNumToRender={items.length}
+        scrollEnabled={false}
+        keyboardShouldPersistTaps="handled"
+      />
       {items.length === 0 && (
         <Text style={[typography.body, styles.centered, { color: colors.textSecondary }]}>
           {t('day.noExercises')}
@@ -122,6 +159,8 @@ export function WorkoutView({ workout }: { workout: Workout }) {
     </View>
   );
 }
+
+const Separator = () => <View style={styles.separator} />;
 
 /** Time from the first logged set to the last; counts up live while the workout is going on. */
 function useWorkoutClock(workout: Workout) {
@@ -150,15 +189,18 @@ function ExerciseItem({
   open,
   filledSets,
   onToggle,
+  onMove,
 }: {
   item: Item;
   date: string;
   open: boolean;
   filledSets: number;
   onToggle: () => void;
+  onMove: (delta: -1 | 1) => void;
 }) {
   const { t } = useTranslation();
   const colors = useColors();
+  const drag = useReorderableDrag();
   const swipeRef = useRef<{ close: () => void } | null>(null);
 
   const remove = () =>
@@ -212,13 +254,23 @@ function ExerciseItem({
       >
         <Pressable
           onPress={onToggle}
+          onLongPress={drag}
+          delayLongPress={DRAG_DELAY - 20}
           accessibilityRole="button"
           accessibilityState={{ expanded: open }}
           accessibilityActions={[
             { name: 'stats', label: t('workout.stats') },
+            { name: 'moveUp', label: t('workout.moveUp') },
+            { name: 'moveDown', label: t('workout.moveDown') },
             { name: 'delete', label: t('workout.removeExercise') },
           ]}
-          onAccessibilityAction={(e) => (e.nativeEvent.actionName === 'stats' ? openStats() : remove())}
+          onAccessibilityAction={(e) => {
+            const action = e.nativeEvent.actionName;
+            if (action === 'stats') openStats();
+            else if (action === 'moveUp') onMove(-1);
+            else if (action === 'moveDown') onMove(1);
+            else remove();
+          }}
           style={[styles.header, { backgroundColor: colors.surface }]}
         >
           <GroupIcon name={item.groupIcon} color={colors.text} />
@@ -315,11 +367,14 @@ const SWIPE_WIDTH = 96;
 const SWIPE_THRESHOLD = 72;
 /** How often a running workout timer refreshes, ms. */
 const TICK_MS = 10_000;
+/** How long an exercise card is held before it can be dragged, ms. */
+const DRAG_DELAY = 400;
 
 const styles = StyleSheet.create({
   list: { gap: spacing.sm },
   centered: { textAlign: 'center' },
   card: { gap: spacing.sm },
+  separator: { height: spacing.sm },
   header: {
     borderRadius: radius.md,
     flexDirection: 'row',

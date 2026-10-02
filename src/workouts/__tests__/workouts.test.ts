@@ -10,6 +10,7 @@ import {
   addProgramToDate,
   addSet,
   removeWorkout,
+  reorderWorkoutExercises,
   repeatWorkout,
   updateSet,
 } from '../repo';
@@ -173,6 +174,27 @@ describe('removeWorkout', () => {
     expect(db.select().from(workouts).all()).toHaveLength(0);
     expect(db.select().from(workoutExercises).all()).toHaveLength(0);
     expect(db.select().from(sets).all()).toHaveLength(0);
+  });
+});
+
+describe('reorderWorkoutExercises', () => {
+  it('stores the new order, keeping each exercise with its sets', () => {
+    const p = createProgram(db, { name: 'Push', color: 'coral', exerciseIds: ids });
+    const w = addProgramToDate(db, '2026-09-29', p);
+    const [a, b, c] = workoutExercisesOf(db, w).all().map((r) => r.id);
+    db.update(sets).set({ reps: 8 }).where(eq(sets.workoutExerciseId, a)).run();
+    reorderWorkoutExercises(db, [b, c, a]);
+    expect(namesOf(w)).toEqual(['Разводка', 'Брусья', 'Жим']);
+    expect(db.select().from(sets).where(eq(sets.workoutExerciseId, a)).get()?.reps).toBe(8);
+  });
+
+  it('keeps the order when more exercises are appended afterwards', () => {
+    const p = createProgram(db, { name: 'Push', color: 'coral', exerciseIds: [ids[0], ids[1]] });
+    const w = addProgramToDate(db, '2026-09-29', p);
+    const [a, b] = workoutExercisesOf(db, w).all().map((r) => r.id);
+    reorderWorkoutExercises(db, [b, a]);
+    addExerciseToDate(db, '2026-09-29', ids[2], 'Т');
+    expect(namesOf(w)).toEqual(['Разводка', 'Жим', 'Брусья']);
   });
 });
 

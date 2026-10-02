@@ -156,6 +156,15 @@ export function removeWorkoutExercise(db: AnyDb, workoutExerciseId: number) {
   db.delete(workoutExercises).where(eq(workoutExercises.id, workoutExerciseId)).run();
 }
 
+/** Saves the order of a workout's exercises: `workoutExerciseIds` from first to last. */
+export function reorderWorkoutExercises(db: AnyDb, workoutExerciseIds: number[]) {
+  db.transaction((tx) => {
+    workoutExerciseIds.forEach((id, position) =>
+      tx.update(workoutExercises).set({ position }).where(eq(workoutExercises.id, id)).run(),
+    );
+  });
+}
+
 // ── workout actions ─────────────────────────────────────────────────────────
 
 export function renameWorkout(db: AnyDb, workoutId: number, name: string) {

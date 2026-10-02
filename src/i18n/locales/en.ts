@@ -40,6 +40,8 @@ export const en: Translation = {
     repeatSet: 'Set {{n}}: fill in the suggestion',
     removeExercise: 'Remove exercise',
     stats: 'Stats',
+    moveUp: 'Move up',
+    moveDown: 'Move down',
     removeExerciseConfirm: 'Remove “{{name}}” from the workout?',
     removeExerciseMessage: 'Entered sets will be deleted.',
     menuMove: 'Move to another date',

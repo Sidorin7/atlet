@@ -38,6 +38,8 @@ export const ru = {
     repeatSet: 'Подход {{n}}: подставить подсказку',
     removeExercise: 'Удалить упражнение',
     stats: 'Статистика',
+    moveUp: 'Переместить выше',
+    moveDown: 'Переместить ниже',
     removeExerciseConfirm: 'Убрать «{{name}}» из тренировки?',
     removeExerciseMessage: 'Введённые подходы будут удалены.',
     menuMove: 'Перенести на другую дату',
