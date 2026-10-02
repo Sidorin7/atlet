@@ -22,7 +22,7 @@ export default function SettingsScreen() {
 
   const contact = async () => {
     try {
-      await Linking.openURL(`mailto:${CONTACT_EMAIL}?subject=GymApp`);
+      await Linking.openURL(`mailto:${CONTACT_EMAIL}?subject=Atlet`);
     } catch {
       Alert.alert(t('settings.contacts'), t('settings.mailFailed', { email: CONTACT_EMAIL }));
     }

@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "GymApp",
+    "name": "Atlet",
     "slug": "gym",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -8,7 +8,6 @@
     "scheme": "gymapp",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/expo.icon",
       "bundleIdentifier": "com.ivansidorin.gymapp",
       "appleTeamId": "D9GVZVNM55",
       "deploymentTarget": "17.0"

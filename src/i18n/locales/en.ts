@@ -127,7 +127,7 @@ export const en: Translation = {
     replace: 'Replace',
     importedTitle: 'Data restored',
     invalidTitle: 'Unsuitable file',
-    invalidMessage: 'This is not a GymApp backup or the file is damaged. Your current data is unchanged.',
+    invalidMessage: 'This is not an Atlet backup or the file is damaged. Your current data is unchanged.',
     errorTitle: 'Something went wrong',
     errorMessage: 'Something went wrong. Your current data is unchanged.',
     exportFailed: 'Could not share the file.',

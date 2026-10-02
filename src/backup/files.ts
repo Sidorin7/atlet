@@ -9,7 +9,7 @@ import { exportBackup, parseBackup, type BackupFile } from './backup';
 
 /** Writes the backup to a temporary file and opens the share sheet (Save to Files, AirDrop, iCloud…). */
 export async function shareBackup(db: Reader, now: Date = new Date()) {
-  const file = new File(Paths.cache, `gymapp-backup-${todayISO(now)}.json`);
+  const file = new File(Paths.cache, `atlet-backup-${todayISO(now)}.json`);
   if (file.exists) file.delete();
   file.create();
   file.write(JSON.stringify(exportBackup(db, now)));
