@@ -1,7 +1,7 @@
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 
 import { closeScreen } from '@/library/nav';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Alert, Pressable, StyleSheet, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -36,18 +36,17 @@ export default function ProgramEditScreen() {
   const { id } = useLocalSearchParams<{ id?: string }>();
   const programId = id ? Number(id) : null;
 
-  const draft = useProgramDraft();
-  const [ready, setReady] = useState(false);
-  useEffect(() => {
+  // Load the program into the shared draft before the first render reads it; the picker screen
+  // edits that draft too. Opening the editor again reloads it, so nothing stale carries over.
+  const [loaded, setLoaded] = useState<number | null>();
+  if (loaded !== programId) {
     programDraft.reset(loadDraft(programId));
-    setReady(true);
-    return () => programDraft.reset();
-  }, [programId]);
+    setLoaded(programId);
+  }
+  const draft = useProgramDraft();
 
   const exercises = useLive(() => allExercises(db));
   const names = useMemo(() => new Map(exercises.map((e) => [e.id, e.name])), [exercises]);
-
-  if (!ready) return null;
 
   const save = () => {
     if (programId) updateProgram(db, programId, draft);

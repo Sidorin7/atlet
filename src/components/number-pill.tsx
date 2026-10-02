@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   InputAccessoryView,
@@ -45,11 +45,12 @@ export function NumberPill({
   const [text, setText] = useState(format(value));
 
   // Follow outside changes (tap-to-fill) but never fight what the user is typing: while the text
-  // is a partial number like "-", `value` does not change, so this effect does not run.
-  useEffect(() => {
+  // is a partial number like "-", `value` does not change, so the text is left alone.
+  const [shown, setShown] = useState(value);
+  if (value !== shown) {
+    setShown(value);
     if (parseNumber(text, { signed }) !== value) setText(format(value));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [value]);
+  }
 
   return (
     <TextInput

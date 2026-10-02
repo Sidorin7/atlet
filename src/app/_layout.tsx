@@ -3,7 +3,7 @@ import { getLocales } from 'expo-localization';
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
@@ -24,12 +24,11 @@ initI18n(deviceLanguage);
 
 export default function RootLayout() {
   const { success, error } = useMigrations(db, migrations);
-  const [seeded, setSeeded] = useState(false);
-
-  useEffect(() => {
-    if (!success) return;
+  // Seeding is idempotent, so running it straight after the migrations is safe.
+  const seeded = useMemo(() => {
+    if (!success) return false;
     seedDefaults(db, deviceLanguage);
-    setSeeded(true);
+    return true;
   }, [success]);
 
   useEffect(() => {

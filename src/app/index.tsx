@@ -1,6 +1,6 @@
 import * as Haptics from 'expo-haptics';
 import { Link, router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
@@ -54,17 +54,19 @@ export default function DayScreen() {
   // After a break, today's empty screen nudges back and offers to repeat the last workout.
   const nudge = selected === today && !workout && reminder && lastWorkout ? { reminder, lastWorkout } : null;
 
-  // After "move workout" the sheet sends us to the new day (`at` makes repeated moves to one date register).
-  const { date: requested, at } = useLocalSearchParams<{ date?: string; at?: string }>();
-  useEffect(() => {
-    if (requested) select(requested);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [requested, at]);
-
   const select = (date: ISODate) => {
     setSelected(date);
     setMonth(startOfMonth(date));
   };
+
+  // After "move workout" the sheet sends us to the new day (`at` makes repeated moves to one date register).
+  const { date: requested, at } = useLocalSearchParams<{ date?: string; at?: string }>();
+  const request = requested ? `${requested}@${at}` : undefined;
+  const [handled, setHandled] = useState(request);
+  if (request !== handled) {
+    setHandled(request);
+    if (requested) select(requested);
+  }
 
   // Swipe left for the next day, right for the previous one. The day follows the finger; on release
   // it either springs back or slides out with a fade while the next day slides in from the other side.

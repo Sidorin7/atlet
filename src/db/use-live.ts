@@ -1,22 +1,37 @@
 import { addDatabaseChangeListener } from 'expo-sqlite';
-import { useEffect, useState, type DependencyList } from 'react';
+import { useState, useSyncExternalStore, type DependencyList } from 'react';
 
 import { queryTables } from './query-tables';
 
+function liveQuery<T>(build: () => { all(): T[] }) {
+  const query = build();
+  const watched = new Set(queryTables(query).map((t) => t.name));
+  let data = query.all();
+  return {
+    get: () => data,
+    subscribe(onChange: () => void) {
+      // Catch writes that landed between the first read and subscribing.
+      data = query.all();
+      const sub = addDatabaseChangeListener(({ tableName }) => {
+        if (!watched.has(tableName)) return;
+        data = query.all();
+        onChange();
+      });
+      return () => sub.remove();
+    },
+  };
+}
+
+const sameDeps = (a: DependencyList, b: DependencyList) =>
+  a.length === b.length && a.every((x, i) => Object.is(x, b[i]));
+
 /** Re-runs a select whenever any table it reads (main or joined) changes. `deps` are the query's inputs. */
 export function useLive<T>(build: () => { all(): T[] }, deps: DependencyList = []): T[] {
-  const [data, setData] = useState<T[]>(() => build().all());
-
-  useEffect(() => {
-    const query = build();
-    const watched = new Set(queryTables(query).map((t) => t.name));
-    setData(query.all());
-    const sub = addDatabaseChangeListener(({ tableName }) => {
-      if (watched.has(tableName)) setData(query.all());
-    });
-    return () => sub.remove();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, deps);
-
-  return data;
+  const [live, setLive] = useState(() => ({ deps, store: liveQuery(build) }));
+  let current = live;
+  if (!sameDeps(live.deps, deps)) {
+    current = { deps, store: liveQuery(build) };
+    setLive(current);
+  }
+  return useSyncExternalStore(current.store.subscribe, current.store.get);
 }
