@@ -22,7 +22,7 @@ import { radius, spacing, typography } from '@/theme/tokens';
 import { ghostPatch, suggestions } from '@/workouts/fields';
 import { previousSession, setsOf, workoutExercisesOf, workoutSetSummary, workoutTiming } from '@/workouts/queries';
 import { addSet, removeWorkout, removeWorkoutExercise, reorderWorkoutExercises } from '@/workouts/repo';
-import { workoutClock } from '@/workouts/timer';
+import { toTiming, workoutClock } from '@/workouts/timer';
 
 import { NumberPadDone } from './number-pill';
 import { NUMBER_WIDTH, SetRow, useSetFields } from './set-row';
@@ -165,10 +165,11 @@ const Separator = () => <View style={styles.separator} />;
 /** Time from the first logged set to the last; counts up live while the workout is going on. */
 function useWorkoutClock(workout: Workout) {
   const today = useToday();
-  const [timing] = useLive(() => workoutTiming(db, workout.id), [workout.id]);
+  const rows = useLive(() => workoutTiming(db, workout.id), [workout.id]);
+  const timing = useMemo(() => toTiming(rows), [rows]);
   const [now, setNow] = useState(() => Date.now());
   // Only today's started workout can be running, so only it needs the clock to move.
-  const live = workout.date === today && timing?.first != null;
+  const live = workout.date === today && timing.times.length > 0;
   useEffect(() => {
     if (!live) return;
     const id = setInterval(() => setNow(Date.now()), TICK_MS);

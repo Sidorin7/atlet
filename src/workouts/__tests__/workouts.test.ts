@@ -24,6 +24,7 @@ import {
   workoutOnDate,
   workoutTiming,
 } from '../queries';
+import { toTiming } from '../timer';
 
 let db: AnyDb;
 let ids: number[];
@@ -270,13 +271,14 @@ describe('set timing', () => {
     expect(loggedAt(first)).toBeNull();
   });
 
-  it('reports the first and latest logged set and how many sets are still empty', () => {
+  it('reports when each set was logged and how many sets are still empty', () => {
     const { w, we, first } = setup();
-    expect(workoutTiming(db, w).get()).toEqual({ first: null, last: null, empty: 1 });
+    const timing = () => toTiming(workoutTiming(db, w).all());
+    expect(timing()).toEqual({ times: [], empty: 1 });
     updateSet(db, first, { reps: 8 }, 1000);
     const second = addSet(db, we);
-    expect(workoutTiming(db, w).get()).toEqual({ first: 1000, last: 1000, empty: 1 });
+    expect(timing()).toEqual({ times: [1000], empty: 1 });
     updateSet(db, second, { reps: 8 }, 5000);
-    expect(workoutTiming(db, w).get()).toEqual({ first: 1000, last: 5000, empty: 0 });
+    expect(timing()).toEqual({ times: [1000, 5000], empty: 0 });
   });
 });
