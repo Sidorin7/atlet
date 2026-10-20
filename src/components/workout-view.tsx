@@ -24,7 +24,6 @@ import { previousSession, setsOf, workoutExercisesOf, workoutSetSummary, workout
 import { addSet, removeWorkout, removeWorkoutExercise, reorderWorkoutExercises } from '@/workouts/repo';
 import { toTiming, workoutClock } from '@/workouts/timer';
 
-import { NumberPadDone } from './number-pill';
 import { NUMBER_WIDTH, SetRow, useSetFields } from './set-row';
 
 type Workout = typeof workouts.$inferSelect;
@@ -160,7 +159,6 @@ export function WorkoutView({ workout }: { workout: Workout }) {
           {t('day.noExercises')}
         </Text>
       )}
-      <NumberPadDone />
     </View>
   );
 }

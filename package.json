@@ -64,7 +64,11 @@
   },
   "private": true,
   "jest": {
-    "preset": "jest-expo"
+    "preset": "jest-expo",
+    "resolver": "react-native-reanimated/jest/resolver",
+    "setupFilesAfterEnv": [
+      "./jest-setup.js"
+    ]
   },
   "overrides": {
     "react-dom": "$react"

@@ -22,6 +22,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { MonthGrid, WeekStrip } from '@/components/calendar';
 import { EmptyIllustration } from '@/components/empty-illustration';
 import { ChevronRightIcon, GearIcon, MoreIcon, PlusIcon, StatsIcon } from '@/components/icons';
+import { NumberPadDone } from '@/components/number-pill';
 import { ReminderCard } from '@/components/reminder-card';
 import { Button } from '@/components/ui';
 import { WorkoutView } from '@/components/workout-view';
@@ -315,6 +316,7 @@ export default function DayScreen() {
           <MoreIcon size={24} color={colors.text} />
         </Pressable>
       )}
+      <NumberPadDone />
     </SafeAreaView>
   );
 }

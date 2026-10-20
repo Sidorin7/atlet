@@ -1,20 +1,11 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  InputAccessoryView,
-  Keyboard,
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInput,
-  type KeyboardTypeOptions,
-} from 'react-native';
+import { Keyboard, Pressable, StyleSheet, Text, TextInput, type KeyboardTypeOptions } from 'react-native';
+import Animated, { useAnimatedKeyboard, useAnimatedStyle } from 'react-native-reanimated';
 
 import { useColors } from '@/settings/provider';
 import { radius, spacing, typography } from '@/theme/tokens';
 import { formatNumber, parseNumber } from '@/workouts/numbers';
-
-const ACCESSORY_ID = 'number-pill-done';
 
 export const PILL_HEIGHT = 44;
 
@@ -63,7 +54,6 @@ export function NumberPill({
       placeholder={ghost !== null ? format(ghost) : unit}
       placeholderTextColor={ghost !== null ? colors.textSecondary : colors.placeholder}
       keyboardType={keyboard}
-      inputAccessoryViewID={ACCESSORY_ID}
       autoFocus={autoFocus}
       onFocus={onFocus}
       onBlur={onBlur}
@@ -75,18 +65,29 @@ export function NumberPill({
   );
 }
 
-/** "Done" bar above the number keyboard, which has no return key of its own. Render once per screen. */
+/**
+ * "Done" bar above the number keyboard, which has no return key of its own. Render once per screen,
+ * outside any scroll view: it rides on top of the keyboard and waits just below the screen otherwise.
+ * (React Native's InputAccessoryView is deprecated and on 0.88 left its background inside the layout.)
+ */
 export function NumberPadDone() {
   const { t } = useTranslation();
   const colors = useColors();
+  const keyboard = useAnimatedKeyboard();
+  const ride = useAnimatedStyle(() => {
+    const height = keyboard.height.get();
+    return { transform: [{ translateY: height > 0 ? -height : DONE_BAR_HEIGHT }] };
+  });
   return (
-    <InputAccessoryView nativeID={ACCESSORY_ID} backgroundColor={colors.surface}>
+    <Animated.View testID="number-pad-done" style={[styles.doneBar, { backgroundColor: colors.surface }, ride]}>
       <Pressable onPress={Keyboard.dismiss} hitSlop={8} accessibilityRole="button" style={styles.done}>
         <Text style={[typography.body, { color: colors.text }]}>{t('common.done')}</Text>
       </Pressable>
-    </InputAccessoryView>
+    </Animated.View>
   );
 }
+
+const DONE_BAR_HEIGHT = 44;
 
 const styles = StyleSheet.create({
   pill: {
@@ -97,6 +98,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     fontSize: 19,
     fontWeight: '700',
+  },
+  doneBar: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: DONE_BAR_HEIGHT,
+    justifyContent: 'center',
   },
   done: { alignSelf: 'flex-end', paddingHorizontal: spacing.md, paddingVertical: 12 },
 });
