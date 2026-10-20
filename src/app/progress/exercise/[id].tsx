@@ -1,7 +1,7 @@
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, useWindowDimensions, View, type ScrollViewInstance } from 'react-native';
 import { LineChart } from 'react-native-gifted-charts';
 
 import { CloseButton, EmptyText, Segmented } from '@/components/ui';
@@ -212,7 +212,7 @@ function HistoryColumns({ history }: { history: HistoryDay[] }) {
   const { colors, language } = useSettings();
   const today = useToday();
   const units = { min: t('workout.unitMin'), km: t('workout.unitKm') };
-  const scroll = useRef<ScrollView>(null);
+  const scroll = useRef<ScrollViewInstance>(null);
 
   return (
     <ScrollView

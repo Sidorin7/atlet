@@ -3,7 +3,7 @@ import { router } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
-import { Gesture } from 'react-native-gesture-handler';
+import { Gesture, type PanGesture } from 'react-native-gesture-handler';
 import ReanimatedSwipeable, { SwipeDirection } from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { NestedReorderableList, useReorderableDrag } from 'react-native-reorderable-list';
 import { scheduleOnRN } from 'react-native-worklets';
@@ -60,7 +60,12 @@ export function WorkoutView({ workout }: { workout: Workout }) {
 
   // Hold an exercise card to pick it up, then drag it up or down. The pan only wakes up after the
   // hold, so card swipes, day swipes and scrolling work as before.
-  const dragPan = useMemo(() => Gesture.Pan().activateAfterLongPress(DRAG_DELAY), []);
+  // The list still runs on the classic Gesture API, but its prop type points at gesture-handler 3's
+  // new PanGesture, so the classic gesture needs a cast to fit.
+  const dragPan = useMemo(
+    () => Gesture.Pan().activateAfterLongPress(DRAG_DELAY) as unknown as PanGesture,
+    [],
+  );
   const reorder = (from: number, to: number) => {
     if (from === to) return;
     const next = moveItem(items, from, to);
