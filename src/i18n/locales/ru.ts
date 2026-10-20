@@ -42,6 +42,7 @@ export const ru = {
     moveDown: 'Переместить ниже',
     removeExerciseConfirm: 'Убрать «{{name}}» из тренировки?',
     removeExerciseMessage: 'Введённые подходы будут удалены.',
+    menuRepeatToday: 'Скопировать на сегодня',
     menuMove: 'Перенести на другую дату',
     menuRename: 'Переименовать',
     menuDelete: 'Удалить тренировку',

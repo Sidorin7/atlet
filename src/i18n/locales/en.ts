@@ -44,6 +44,7 @@ export const en: Translation = {
     moveDown: 'Move down',
     removeExerciseConfirm: 'Remove “{{name}}” from the workout?',
     removeExerciseMessage: 'Entered sets will be deleted.',
+    menuRepeatToday: 'Copy to today',
     menuMove: 'Move to another date',
     menuRename: 'Rename',
     menuDelete: 'Delete workout',

@@ -300,6 +300,14 @@ export default function DayScreen() {
         <Pressable
           onPress={() =>
             showWorkoutMenu(t, workout.name, {
+              onRepeatToday:
+                workout.date === today
+                  ? undefined
+                  : () => {
+                      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                      repeatWorkout(db, workout.id, today);
+                      select(today);
+                    },
               onMove: () =>
                 router.push({
                   pathname: '/move-workout',
