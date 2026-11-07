@@ -12,6 +12,7 @@ import { seedDefaults } from '@/db/seed';
 import { initI18n } from '@/i18n';
 import { SettingsProvider, useSettings } from '@/settings/provider';
 import { resolveLanguage } from '@/settings/resolve';
+import { RenewalProvider } from '@/renewal/provider';
 import migrations from '../../drizzle/migrations';
 
 SplashScreen.preventAutoHideAsync();
@@ -47,7 +48,9 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={styles.root}>
       <SettingsProvider>
-        <AppStack />
+        <RenewalProvider>
+          <AppStack />
+        </RenewalProvider>
       </SettingsProvider>
     </GestureHandlerRootView>
   );

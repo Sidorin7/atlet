@@ -1,4 +1,20 @@
 export const ru = {
+  renewal: {
+    compact: 'Обновить до {{date}}',
+    remaining_one: 'Обновите Atlet через {{count}} день',
+    remaining_few: 'Обновите Atlet через {{count}} дня',
+    remaining_many: 'Обновите Atlet через {{count}} дней',
+    remaining_other: 'Обновите Atlet через {{count}} дня',
+    today: 'Обновите Atlet сегодня',
+    deadline: 'Текущая сборка действует до {{date}}',
+    enabled: 'Уведомления включены',
+    allow: 'Разрешить уведомления',
+    failed: 'Не удалось настроить уведомления',
+    retry: 'Попробовать снова',
+    notificationTitle: 'Пора обновить Atlet',
+    notificationTwoDays: 'Через 2 дня срок текущей сборки закончится. Подключите iPhone к Mac и пересоберите Atlet.',
+    notificationOneDay: 'Срок текущей сборки закончится завтра. Пересоберите Atlet сегодня, чтобы он продолжал открываться.',
+  },
   common: {
     today: 'Сегодня',
     save: 'Сохранить',

@@ -35,6 +35,7 @@ import { radius, spacing, typography } from '@/theme/tokens';
 import { showWorkoutMenu } from '@/workouts/menu';
 import { doneDates, lastDoneDate, lastDoneWorkout, workoutOnDate } from '@/workouts/queries';
 import { reminderFor } from '@/workouts/reminder';
+import { BuildRenewalNotice } from '@/renewal/provider';
 import { removeWorkout, renameWorkout, repeatWorkout } from '@/workouts/repo';
 import { useMarks } from '@/workouts/use-marks';
 
@@ -204,6 +205,7 @@ export default function DayScreen() {
       </View>
 
       {/* Week strip ⇄ month grid: the calendar crossfades while its height, and everything below, eases into place. */}
+      <BuildRenewalNotice />
       <Animated.View layout={CALENDAR_LAYOUT} style={styles.calendar}>
         {monthOpen ? (
           <Animated.View key="month" entering={CALENDAR_IN} exiting={CALENDAR_OUT}>

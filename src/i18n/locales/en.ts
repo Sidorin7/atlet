@@ -1,6 +1,22 @@
 import type { Translation } from './ru';
 
 export const en: Translation = {
+  renewal: {
+    compact: 'Renew by {{date}}',
+    remaining_one: 'Renew Atlet in {{count}} day',
+    remaining_few: 'Renew Atlet in {{count}} days',
+    remaining_many: 'Renew Atlet in {{count}} days',
+    remaining_other: 'Renew Atlet in {{count}} days',
+    today: 'Renew Atlet today',
+    deadline: 'This build expires on {{date}}',
+    enabled: 'Notifications enabled',
+    allow: 'Allow notifications',
+    failed: 'Could not set up notifications',
+    retry: 'Try again',
+    notificationTitle: 'Time to renew Atlet',
+    notificationTwoDays: 'This build expires in 2 days. Connect your iPhone to your Mac and rebuild Atlet.',
+    notificationOneDay: 'This build expires tomorrow. Rebuild Atlet today so it keeps opening.',
+  },
   common: {
     today: 'Today',
     save: 'Save',
